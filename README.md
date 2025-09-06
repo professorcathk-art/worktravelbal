@@ -6,15 +6,23 @@ A modern web application for work and travel balance management.
 
 This project is set up as a Node.js application. To get started:
 
-1. Install dependencies:
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/professorcathk-art/worktravelbal.git
+   cd worktravelbal
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Run the development server:
+3. Run the development server:
    ```bash
    npm run dev
    ```
+
+4. Open your browser and navigate to `http://localhost:3000`
 
 ## Project Structure
 
