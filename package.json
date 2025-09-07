@@ -4,8 +4,11 @@
   "description": "數位遊牧專家平台 - 實現邊旅遊邊工作的夢想",
   "main": "index.js",
   "scripts": {
-    "start": "live-server public --port=3000",
+    "start": "node server.js",
     "dev": "live-server public --port=3000 --open",
+    "server": "node server.js",
+    "setup-db": "node scripts/setup-db.js",
+    "test-db": "node scripts/test-connection.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,5 +16,12 @@
   "license": "ISC",
   "devDependencies": {
     "live-server": "^1.2.2"
+  },
+  "dependencies": {
+    "@types/pg": "^8.15.5",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "pg": "^8.16.3"
   }
 }
