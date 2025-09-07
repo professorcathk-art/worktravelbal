@@ -487,6 +487,100 @@
         </div>
     </div>
 
+    <!-- Post Task Modal -->
+    <div class="modal hidden" id="postTaskModal">
+        <div class="modal-backdrop" onclick="closeModal('postTaskModal')"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>發布新任務</h3>
+                <button class="modal-close" onclick="closeModal('postTaskModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="postTaskForm">
+                    <div class="form-group">
+                        <label class="form-label">任務標題 *</label>
+                        <input type="text" class="form-control" id="taskTitle" placeholder="例如：網站開發、UI設計、內容創作..." required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">任務類別 *</label>
+                        <select class="form-control" id="taskCategory" required>
+                            <option value="">選擇類別</option>
+                            <option value="網頁開發">網頁開發</option>
+                            <option value="平面設計">平面設計</option>
+                            <option value="數位行銷">數位行銷</option>
+                            <option value="內容創作">內容創作</option>
+                            <option value="商業顧問">商業顧問</option>
+                            <option value="UI/UX設計">UI/UX設計</option>
+                            <option value="資料分析">資料分析</option>
+                            <option value="影片製作">影片製作</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">任務描述 *</label>
+                        <textarea class="form-control" id="taskDescription" rows="6" placeholder="詳細描述您的需求，包括項目背景、具體要求、預期成果等..." required></textarea>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                        <div class="form-group">
+                            <label class="form-label">預算範圍 (最低) *</label>
+                            <input type="number" class="form-control" id="budgetMin" placeholder="例如：1000" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">預算範圍 (最高) *</label>
+                            <input type="number" class="form-control" id="budgetMax" placeholder="例如：5000" required>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                        <div class="form-group">
+                            <label class="form-label">預計完成時間 *</label>
+                            <input type="text" class="form-control" id="taskDuration" placeholder="例如：2-4週、1個月" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">經驗要求</label>
+                            <select class="form-control" id="experienceLevel">
+                                <option value="初級">初級</option>
+                                <option value="中級" selected>中級</option>
+                                <option value="高級">高級</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
+                        <div class="form-group">
+                            <label class="form-label">截止日期</label>
+                            <input type="date" class="form-control" id="taskDeadline">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">時區</label>
+                            <select class="form-control" id="taskTimezone">
+                                <option value="GMT+8">GMT+8 (台灣/香港)</option>
+                                <option value="GMT+0">GMT+0 (倫敦)</option>
+                                <option value="GMT-5">GMT-5 (紐約)</option>
+                                <option value="GMT+9">GMT+9 (東京)</option>
+                                <option value="任何時區">任何時區</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">所需技能</label>
+                        <div class="skills-input">
+                            <input type="text" class="form-control" id="taskSkillInput" placeholder="輸入技能並按 Enter">
+                            <div class="skills-tags" id="taskSkillsTags"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-buttons">
+                        <button type="button" class="btn btn--outline" onclick="closeModal('postTaskModal')">取消</button>
+                        <button type="submit" class="btn btn--primary">發布任務</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     <script src="app.js"></script>
 </body>
 </html>

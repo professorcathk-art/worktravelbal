@@ -274,9 +274,116 @@ const platformData = {
   }
 };
 
+// Task posting functionality
+let taskSkills = [];
+
+function openPostTaskModal() {
+    document.getElementById('postTaskModal').classList.remove('hidden');
+    taskSkills = []; // Reset skills
+    updateTaskSkillsDisplay();
+}
+
+function addTaskSkill() {
+    const skillInput = document.getElementById('taskSkillInput');
+    const skill = skillInput.value.trim();
+    
+    if (skill && !taskSkills.includes(skill)) {
+        taskSkills.push(skill);
+        skillInput.value = '';
+        updateTaskSkillsDisplay();
+    }
+}
+
+function removeTaskSkill(skill) {
+    taskSkills = taskSkills.filter(s => s !== skill);
+    updateTaskSkillsDisplay();
+}
+
+function updateTaskSkillsDisplay() {
+    const skillsContainer = document.getElementById('taskSkillsTags');
+    skillsContainer.innerHTML = '';
+    
+    taskSkills.forEach(skill => {
+        const skillTag = document.createElement('span');
+        skillTag.className = 'skill-tag';
+        skillTag.innerHTML = `${skill} <span onclick="removeTaskSkill('${skill}')" style="cursor: pointer; margin-left: 4px;">&times;</span>`;
+        skillsContainer.appendChild(skillTag);
+    });
+}
+
+// Handle task skill input
+document.addEventListener('DOMContentLoaded', function() {
+    const taskSkillInput = document.getElementById('taskSkillInput');
+    if (taskSkillInput) {
+        taskSkillInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addTaskSkill();
+            }
+        });
+    }
+    
+    // Handle task form submission
+    const postTaskForm = document.getElementById('postTaskForm');
+    if (postTaskForm) {
+        postTaskForm.addEventListener('submit', handleTaskSubmission);
+    }
+});
+
+async function handleTaskSubmission(e) {
+    e.preventDefault();
+    
+    const formData = {
+        title: document.getElementById('taskTitle').value,
+        category: document.getElementById('taskCategory').value,
+        description: document.getElementById('taskDescription').value,
+        budget_min: parseInt(document.getElementById('budgetMin').value),
+        budget_max: parseInt(document.getElementById('budgetMax').value),
+        duration: document.getElementById('taskDuration').value,
+        experience_level: document.getElementById('experienceLevel').value,
+        deadline: document.getElementById('taskDeadline').value,
+        timezone: document.getElementById('taskTimezone').value,
+        skills: taskSkills,
+        client_id: currentUser.id,
+        status: 'open'
+    };
+    
+    try {
+        const response = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showNotification('任務發布成功！', 'success');
+            closeModal('postTaskModal');
+            
+            // Reset form
+            document.getElementById('postTaskForm').reset();
+            taskSkills = [];
+            updateTaskSkillsDisplay();
+            
+            // Refresh the page to show the new task
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            const error = await response.json();
+            showNotification('發布失敗：' + (error.message || '請稍後再試'), 'error');
+        }
+    } catch (error) {
+        console.error('Error posting task:', error);
+        showNotification('發布失敗：網絡錯誤', 'error');
+    }
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
-  initializeApp();
+    initializeApp();
 });
 
 function initializeApp() {
@@ -1459,7 +1566,7 @@ function populateClientPortal(content) {
               <div style="font-size: 2rem; margin-bottom: var(--space-12);">📝</div>
               <h4>發布任務</h4>
               <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">發布遠程工作任務，吸引全球專家</p>
-              <button class="btn btn--primary btn--sm" style="margin-top: var(--space-12);">即將開放</button>
+              <button class="btn btn--primary btn--sm" style="margin-top: var(--space-12);" onclick="openPostTaskModal()">發布任務</button>
             </div>
             <div class="feature-card" style="padding: var(--space-20); background: var(--color-bg-3); border-radius: var(--radius-base); text-align: center;">
               <div style="font-size: 2rem; margin-bottom: var(--space-12);">👥</div>

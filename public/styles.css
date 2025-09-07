@@ -1969,3 +1969,89 @@ select.form-control {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+/* Form Styles for Task Posting */
+.form-group {
+  margin-bottom: var(--space-16);
+}
+
+.form-label {
+  display: block;
+  margin-bottom: var(--space-8);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text);
+}
+
+.form-control {
+  width: 100%;
+  padding: var(--space-12);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-base);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-size-base);
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-control::placeholder {
+  color: var(--color-text-secondary);
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 100px;
+}
+
+select.form-control {
+  cursor: pointer;
+}
+
+/* Skills Input */
+.skills-input {
+  position: relative;
+}
+
+.skills-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin-top: var(--space-8);
+}
+
+.skill-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-8) var(--space-12);
+  background: var(--color-primary);
+  color: white;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.skill-tag span {
+  margin-left: var(--space-4);
+  font-weight: bold;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.skill-tag span:hover {
+  opacity: 1;
+}
+
+/* Form Buttons */
+.form-buttons {
+  display: flex;
+  gap: var(--space-12);
+  justify-content: flex-end;
+  margin-top: var(--space-24);
+  padding-top: var(--space-20);
+  border-top: 1px solid var(--color-card-border);
+}

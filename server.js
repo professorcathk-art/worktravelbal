@@ -149,15 +149,88 @@ app.post('/api/users', async (req, res) => {
 // Create a new task
 app.post('/api/tasks', async (req, res) => {
   try {
-    const { client_id, title, description, budget_min, budget_max, duration, category_id, experience_level, deadline } = req.body;
+    const {
+      title,
+      category,
+      description,
+      budget_min,
+      budget_max,
+      duration,
+      experience_level,
+      deadline,
+      timezone,
+      skills,
+      client_id,
+      status
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !category || !description || !budget_min || !budget_max || !client_id) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // First, find or create the category
+    let categoryResult = await pool.query('SELECT id FROM task_categories WHERE name = $1', [category]);
+    let categoryId;
     
-    const result = await pool.query(`
-      INSERT INTO tasks (client_id, title, description, budget_min, budget_max, duration, category_id, experience_level, deadline)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    if (categoryResult.rows.length === 0) {
+      // Create new category if it doesn't exist
+      const newCategoryResult = await pool.query(
+        'INSERT INTO task_categories (name, created_at) VALUES ($1, NOW()) RETURNING id',
+        [category]
+      );
+      categoryId = newCategoryResult.rows[0].id;
+    } else {
+      categoryId = categoryResult.rows[0].id;
+    }
+
+    // Insert task
+    const taskResult = await pool.query(`
+      INSERT INTO tasks (
+        title, category_id, description, budget_min, budget_max, 
+        duration, experience_level, deadline, timezone, 
+        client_id, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
       RETURNING *
-    `, [client_id, title, description, budget_min, budget_max, duration, category_id, experience_level, deadline]);
-    
-    res.status(201).json(result.rows[0]);
+    `, [
+      title, categoryId, description, budget_min, budget_max,
+      duration, experience_level, deadline, timezone,
+      client_id, status || 'open'
+    ]);
+
+    const task = taskResult.rows[0];
+
+    // Insert skills if provided
+    if (skills && skills.length > 0) {
+      for (const skillName of skills) {
+        // First, try to find existing skill
+        let skillResult = await pool.query('SELECT id FROM skills WHERE name = $1', [skillName]);
+        
+        let skillId;
+        if (skillResult.rows.length === 0) {
+          // Create new skill if it doesn't exist
+          const newSkillResult = await pool.query(
+            'INSERT INTO skills (name, category, created_at) VALUES ($1, $2, NOW()) RETURNING id',
+            [skillName, category]
+          );
+          skillId = newSkillResult.rows[0].id;
+        } else {
+          skillId = skillResult.rows[0].id;
+        }
+
+        // Link skill to task
+        await pool.query(
+          'INSERT INTO task_skills (task_id, skill_id, created_at) VALUES ($1, $2, NOW())',
+          [task.id, skillId]
+        );
+      }
+    }
+
+    res.status(201).json({
+      message: 'Task created successfully',
+      task: task
+    });
+
   } catch (error) {
     console.error('Error creating task:', error);
     res.status(500).json({ error: 'Failed to create task' });
