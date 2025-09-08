@@ -389,6 +389,127 @@ function generateSimpleUUID() {
   });
 }
 
+// Load and display my tasks
+async function loadMyTasks() {
+  if (!currentUser) return;
+  
+  try {
+    const response = await fetch(`/api/my-tasks?client_id=${currentUser.id}`);
+    if (response.ok) {
+      const tasks = await response.json();
+      displayMyTasks(tasks);
+      updateTaskStats(tasks);
+    } else {
+      console.error('Failed to load tasks');
+    }
+  } catch (error) {
+    console.error('Error loading tasks:', error);
+  }
+}
+
+function displayMyTasks(tasks) {
+  const container = document.getElementById('myTasksList');
+  if (!container) return;
+  
+  if (tasks.length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-20);">尚未發布任何任務</p>';
+    return;
+  }
+  
+  container.innerHTML = tasks.map(task => `
+    <div class="task-card" style="padding: var(--space-16); background: var(--color-bg-1); border-radius: var(--radius-base); border: 1px solid var(--color-border);">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+        <h4 style="margin: 0; color: var(--color-text-primary);">${task.title}</h4>
+        <span class="task-status" style="padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm); background: ${getStatusColor(task.status)}; color: white;">
+          ${getStatusText(task.status)}
+        </span>
+      </div>
+      
+      <p style="color: var(--color-text-secondary); margin-bottom: var(--space-12); line-height: 1.5;">
+        ${task.description.length > 150 ? task.description.substring(0, 150) + '...' : task.description}
+      </p>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-12); margin-bottom: var(--space-16);">
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">預算</div>
+          <div style="font-weight: var(--font-weight-medium);">$${task.budget_min} - $${task.budget_max}</div>
+        </div>
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">類別</div>
+          <div style="font-weight: var(--font-weight-medium);">${task.category_name || '未分類'}</div>
+        </div>
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">申請數</div>
+          <div style="font-weight: var(--font-weight-medium); color: var(--color-primary);">${task.application_count || 0}</div>
+        </div>
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">發布時間</div>
+          <div style="font-weight: var(--font-weight-medium);">${new Date(task.created_at).toLocaleDateString('zh-TW')}</div>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: var(--space-8);">
+        <button class="btn btn--primary btn--sm" onclick="viewTaskApplications('${task.id}')">
+          查看申請 (${task.application_count || 0})
+        </button>
+        <button class="btn btn--outline btn--sm" onclick="editTask('${task.id}')">
+          編輯任務
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateTaskStats(tasks) {
+  const totalTasks = tasks.length;
+  const totalApplications = tasks.reduce((sum, task) => sum + (task.application_count || 0), 0);
+  const activeProjects = tasks.filter(task => task.status === 'in_progress').length;
+  
+  const totalTasksEl = document.getElementById('totalTasks');
+  const totalApplicationsEl = document.getElementById('totalApplications');
+  const activeProjectsEl = document.getElementById('activeProjects');
+  
+  if (totalTasksEl) totalTasksEl.textContent = totalTasks;
+  if (totalApplicationsEl) totalApplicationsEl.textContent = totalApplications;
+  if (activeProjectsEl) activeProjectsEl.textContent = activeProjects;
+}
+
+function getStatusColor(status) {
+  switch (status) {
+    case 'open': return 'var(--color-success)';
+    case 'in_progress': return 'var(--color-warning)';
+    case 'completed': return 'var(--color-info)';
+    case 'cancelled': return 'var(--color-error)';
+    default: return 'var(--color-text-secondary)';
+  }
+}
+
+function getStatusText(status) {
+  switch (status) {
+    case 'open': return '開放中';
+    case 'in_progress': return '進行中';
+    case 'completed': return '已完成';
+    case 'cancelled': return '已取消';
+    default: return '未知';
+  }
+}
+
+function showMyTasks() {
+  loadMyTasks();
+}
+
+function viewTaskApplications(taskId) {
+  // This will open a modal to show applications for the task
+  console.log('View applications for task:', taskId);
+  // TODO: Implement application viewing modal
+}
+
+function editTask(taskId) {
+  // This will open the task editing modal
+  console.log('Edit task:', taskId);
+  // TODO: Implement task editing
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
@@ -1580,7 +1701,7 @@ function populateClientPortal(content) {
               <div style="font-size: 2rem; margin-bottom: var(--space-12);">👥</div>
               <h4>管理應聘者</h4>
               <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">查看和管理專家申請</p>
-              <button class="btn btn--primary btn--sm" style="margin-top: var(--space-12);">即將開放</button>
+              <button class="btn btn--primary btn--sm" style="margin-top: var(--space-12);" onclick="showMyTasks()">管理任務</button>
             </div>
             <div class="feature-card" style="padding: var(--space-20); background: var(--color-bg-6); border-radius: var(--radius-base); text-align: center;">
               <div style="font-size: 2rem; margin-bottom: var(--space-12);">📊</div>
@@ -1592,18 +1713,25 @@ function populateClientPortal(content) {
         </div>
         
         <div class="profile-section">
+          <h3>我的任務</h3>
+          <div id="myTasksList" style="display: grid; gap: var(--space-16);">
+            <!-- Tasks will be loaded here -->
+          </div>
+        </div>
+        
+        <div class="profile-section">
           <h3>企業統計</h3>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-16);">
             <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-2); border-radius: var(--radius-base);">
-              <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-warning);">0</div>
+              <div id="totalTasks" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-warning);">0</div>
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">發布任務</div>
             </div>
             <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-5); border-radius: var(--radius-base);">
-              <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-info);">0</div>
+              <div id="totalApplications" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-info);">0</div>
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">收到申請</div>
             </div>
             <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-4); border-radius: var(--radius-base);">
-              <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-error);">0</div>
+              <div id="activeProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-error);">0</div>
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">進行中項目</div>
             </div>
           </div>
@@ -1611,6 +1739,11 @@ function populateClientPortal(content) {
       </div>
     </div>
   `;
+  
+  // Load tasks after rendering the portal
+  setTimeout(() => {
+    loadMyTasks();
+  }, 100);
 }
 
 function getStatusText(status) {
