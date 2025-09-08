@@ -311,6 +311,12 @@
                     </div>
                     <button type="submit" class="btn btn--primary btn--full-width">登入</button>
                 </form>
+                <div style="text-align: center; margin-top: var(--space-16);">
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                        還沒有帳號？ 
+                        <a href="#" onclick="closeModal('loginModal'); openModal('register');" style="color: var(--color-primary); text-decoration: none;">立即註冊</a>
+                    </p>
+                </div>
             </div>
         </div>
     </div>
@@ -420,6 +426,12 @@
                         </div>
                     </div>
                 </form>
+                <div style="text-align: center; margin-top: var(--space-16);">
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                        已經有帳號？ 
+                        <a href="#" onclick="closeModal('registerModal'); openModal('login');" style="color: var(--color-primary); text-decoration: none;">立即登入</a>
+                    </p>
+                </div>
             </div>
         </div>
     </div>

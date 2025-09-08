@@ -970,29 +970,15 @@ async function handleLogin() {
         }
       }
       
-      // If user doesn't exist, create a new one
+      // If user doesn't exist, suggest registration
       if (!user) {
-        console.log('User not found, creating new user');
-        const newUserResponse = await fetch('/api/users', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: email,
-            password_hash: 'demo_hash',
-            name: email.split('@')[0],
-            user_type: 'expert'
-          })
-        });
-        
-        if (newUserResponse.ok) {
-          const newUser = await newUserResponse.json();
-          user = newUser.user;
-          console.log('Created new user:', user);
-        } else {
-          throw new Error('Failed to create user');
-        }
+        showNotification('此帳號尚未註冊，請先註冊或檢查電子郵件地址', 'error');
+        // Optionally switch to register modal
+        setTimeout(() => {
+          closeModal('loginModal');
+          openModal('register');
+        }, 2000);
+        return;
       }
       
       // Set up current user with additional demo data
@@ -1042,6 +1028,23 @@ async function handleRegister() {
   }
   
   try {
+    // First, check if user already exists
+    const checkResponse = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
+    if (checkResponse.ok) {
+      const existingUsers = await checkResponse.json();
+      if (existingUsers.length > 0) {
+        showNotification('此電子郵件地址已經註冊，請直接登入', 'error');
+        // Switch to login modal
+        setTimeout(() => {
+          closeModal('registerModal');
+          openModal('login');
+          // Pre-fill the email field
+          document.getElementById('loginEmail').value = email;
+        }, 2000);
+        return;
+      }
+    }
+    
     // Create user in database
     const response = await fetch('/api/users', {
       method: 'POST',
