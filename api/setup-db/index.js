@@ -185,6 +185,16 @@ module.exports = async (req, res) => {
     await pool.query(createTables);
     console.log('Database tables created/verified successfully');
     
+    // First, ensure destinations table has the right columns
+    const alterDestinations = `
+      ALTER TABLE destinations 
+      ADD COLUMN IF NOT EXISTS cost_of_living DECIMAL(10,2),
+      ADD COLUMN IF NOT EXISTS internet_speed DECIMAL(5,2);
+    `;
+    
+    await pool.query(alterDestinations);
+    console.log('Destinations table columns updated');
+
     // Insert initial data
     const initialData = `
       -- Insert initial task categories
@@ -220,8 +230,13 @@ module.exports = async (req, res) => {
       ('Premiere Pro', '影片製作', NOW()),
       ('After Effects', '影片製作', NOW())
       ON CONFLICT (name) DO NOTHING;
+    `;
+    
+    await pool.query(initialData);
+    console.log('Task categories and skills inserted successfully');
 
-      -- Insert initial destinations
+    // Insert destinations separately to handle column issues
+    const destinationsData = `
       INSERT INTO destinations (name, country, nomad_count, cost_of_living, internet_speed, created_at) VALUES
       ('台北', '台灣', 1500, 1200, 85, NOW()),
       ('曼谷', '泰國', 8000, 800, 45, NOW()),
@@ -241,8 +256,8 @@ module.exports = async (req, res) => {
       ON CONFLICT (name) DO NOTHING;
     `;
     
-    await pool.query(initialData);
-    console.log('Initial data inserted successfully');
+    await pool.query(destinationsData);
+    console.log('Destinations data inserted successfully');
     
     res.status(200).json({
       success: true,
