@@ -1580,7 +1580,7 @@ function applyToTask(taskId) {
 }
 
 async function handleTaskApplication() {
-  const taskId = parseInt(document.getElementById('applicationModal').dataset.taskId);
+  const taskId = document.getElementById('applicationModal').dataset.taskId;
   const proposalText = document.getElementById('proposalText').value;
   const bidAmount = document.getElementById('bidAmount').value;
   const deliveryTime = document.getElementById('deliveryTime').value;
@@ -1606,8 +1606,8 @@ async function handleTaskApplication() {
         task_id: taskId,
         expert_id: currentUser.id,
         proposal_text: proposalText,
-        bid_amount: bidAmount,
-        delivery_time: deliveryTime,
+        bid_amount: parseInt(bidAmount),
+        delivery_time: parseInt(deliveryTime),
         portfolio_link: portfolioLink
       })
     });
@@ -1623,8 +1623,8 @@ async function handleTaskApplication() {
         taskId: taskId,
         userId: currentUser.id,
         proposalText: proposalText,
-        bidAmount: bidAmount,
-        deliveryTime: deliveryTime,
+        bidAmount: parseInt(bidAmount),
+        deliveryTime: parseInt(deliveryTime),
         portfolioLink: portfolioLink,
         status: 'pending',
         appliedAt: new Date().toISOString()
