@@ -73,8 +73,19 @@ module.exports = async (req, res) => {
         status
       } = req.body;
 
+      console.log('Creating task with data:', {
+        title,
+        category,
+        budget_min,
+        budget_max,
+        deadline,
+        client_id,
+        skills_count: skills ? skills.length : 0
+      });
+
       // Validate required fields
       if (!title || !category || !description || !budget_min || !budget_max || !client_id) {
+        console.log('Validation failed - missing required fields');
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
@@ -93,19 +104,22 @@ module.exports = async (req, res) => {
         categoryId = categoryResult.rows[0].id;
       }
 
-      // Insert task
-      const taskResult = await pool.query(`
-        INSERT INTO tasks (
-          title, category_id, description, budget_min, budget_max, 
-          duration, experience_level, deadline, timezone, 
-          client_id, status, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-        RETURNING *
-      `, [
-        title, categoryId, description, budget_min, budget_max,
-        duration, experience_level, deadline, timezone,
-        client_id, status || 'open'
-      ]);
+    // Handle empty deadline - convert empty string to null
+    const deadlineValue = deadline && deadline.trim() !== '' ? deadline : null;
+
+    // Insert task
+    const taskResult = await pool.query(`
+      INSERT INTO tasks (
+        title, category_id, description, budget_min, budget_max, 
+        duration, experience_level, deadline, timezone, 
+        client_id, status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      RETURNING *
+    `, [
+      title, categoryId, description, budget_min, budget_max,
+      duration, experience_level, deadlineValue, timezone,
+      client_id, status || 'open'
+    ]);
 
       const task = taskResult.rows[0];
 
@@ -135,15 +149,25 @@ module.exports = async (req, res) => {
         }
       }
 
-      res.status(201).json({
-        message: 'Task created successfully',
-        task: task
-      });
+    console.log('Task created successfully:', task.id);
+    res.status(201).json({
+      message: 'Task created successfully',
+      task: task
+    });
 
-    } catch (error) {
-      console.error('Error creating task:', error);
-      res.status(500).json({ error: 'Failed to create task' });
-    }
+  } catch (error) {
+    console.error('Error creating task:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail
+    });
+    res.status(500).json({ 
+      error: 'Failed to create task',
+      details: error.message,
+      code: error.code
+    });
+  }
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }
