@@ -373,9 +373,9 @@ async function handleTaskSubmission(e) {
             taskSkills = [];
             updateTaskSkillsDisplay();
             
-            // Refresh the page to show the new task
+            // Refresh the marketplace to show the new task
             setTimeout(() => {
-                window.location.reload();
+                loadAndPopulateTasks();
             }, 1000);
         } else {
             const error = await response.json();
@@ -564,7 +564,7 @@ function initializeApp() {
   populateCategories();
   populateDestinations();
   populateExperts();
-  populateTasks();
+  loadAndPopulateTasks(); // Load real tasks from API
   populateCoworkingSpaces();
   animateCounters();
   
@@ -1214,42 +1214,77 @@ function populateExperts(experts = platformData.experts) {
   });
 }
 
+// Load tasks from API and populate the marketplace
+async function loadAndPopulateTasks() {
+  try {
+    console.log('Loading tasks from API...');
+    const response = await fetch('/api/tasks');
+    if (response.ok) {
+      const tasks = await response.json();
+      console.log('Loaded tasks from API:', tasks);
+      populateTasks(tasks);
+    } else {
+      console.error('Failed to load tasks from API, using static data');
+      populateTasks(platformData.tasks);
+    }
+  } catch (error) {
+    console.error('Error loading tasks from API:', error);
+    populateTasks(platformData.tasks);
+  }
+}
+
 function populateTasks(tasks = platformData.tasks) {
   const grid = document.getElementById('tasksGrid');
   if (!grid) return;
   
   grid.innerHTML = '';
   
+  if (tasks.length === 0) {
+    grid.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-20);">目前沒有可接的任務</p>';
+    return;
+  }
+  
   tasks.forEach(task => {
     const card = document.createElement('div');
     card.className = 'task-card';
+    
+    // Handle both API data format and static data format
+    const budget = task.budget || `$${task.budget_min}-${task.budget_max}`;
+    const company = task.company || task.client_name || '未知公司';
+    const companyLogo = task.companyLogo || '🏢';
+    const duration = task.duration || '未指定';
+    const experienceLevel = task.experience_level || task.experienceLevel || '未指定';
+    const deadline = task.deadline || '未指定';
+    const skills = task.skills || [];
+    const applications = task.application_count || task.applications || 0;
+    
     card.innerHTML = `
       <div class="task-header">
         <div>
           <div class="task-title">${task.title}</div>
           <div class="task-company">
-            <span class="company-logo">${task.companyLogo}</span>
-            ${task.company}
+            <span class="company-logo">${companyLogo}</span>
+            ${company}
           </div>
         </div>
-        <div class="task-budget">${task.budget}</div>
+        <div class="task-budget">${budget}</div>
       </div>
       <div class="task-meta">
-        <div class="task-meta-item">⏱️ ${task.duration}</div>
-        <div class="task-meta-item">📍 ${task.remote ? '遠程' : '現場'}</div>
-        <div class="task-meta-item">📊 ${task.experienceLevel}</div>
+        <div class="task-meta-item">⏱️ ${duration}</div>
+        <div class="task-meta-item">📍 遠程</div>
+        <div class="task-meta-item">📊 ${experienceLevel}</div>
       </div>
       <div class="task-description">${task.description}</div>
       <div class="task-skills">
-        ${task.skills.slice(0, 4).map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+        ${skills.slice(0, 4).map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
       </div>
       <div class="task-footer">
-        <div class="task-applications">${task.applications} 人申請</div>
-        <div class="task-deadline">截止: ${task.deadline}</div>
+        <div class="task-applications">${applications} 人申請</div>
+        <div class="task-deadline">截止: ${deadline}</div>
       </div>
     `;
     
-    card.addEventListener('click', () => showTaskDetails(task.id));
+    card.addEventListener('click', () => showTaskDetails(task));
     
     grid.appendChild(card);
   });
@@ -1304,24 +1339,71 @@ function searchExperts() {
   populateExperts(filteredExperts);
 }
 
-function searchTasks() {
+async function searchTasks() {
   const searchTerm = document.getElementById('taskSearch')?.value.toLowerCase() || '';
   const categoryFilter = document.getElementById('taskCategoryFilter')?.value || '';
   const budgetFilter = document.getElementById('budgetFilter')?.value || '';
   
-  let filteredTasks = platformData.tasks.filter(task => {
-    const matchesSearch = !searchTerm || 
-      task.title.toLowerCase().includes(searchTerm) ||
-      task.company.toLowerCase().includes(searchTerm) ||
-      task.skills.some(skill => skill.toLowerCase().includes(searchTerm));
-    
-    const matchesCategory = !categoryFilter || task.category === categoryFilter;
-    const matchesBudget = !budgetFilter || checkBudgetRange(task.budget, budgetFilter);
-    
-    return matchesSearch && matchesCategory && matchesBudget;
-  });
+  // If no filters are applied, reload all tasks from API
+  if (!searchTerm && !categoryFilter && !budgetFilter) {
+    await loadAndPopulateTasks();
+    return;
+  }
   
-  populateTasks(filteredTasks);
+  try {
+    // Load tasks from API first
+    const response = await fetch('/api/tasks');
+    if (response.ok) {
+      const tasks = await response.json();
+      
+      // Apply filters
+      let filteredTasks = tasks.filter(task => {
+        const matchesSearch = !searchTerm || 
+          task.title.toLowerCase().includes(searchTerm) ||
+          (task.client_name && task.client_name.toLowerCase().includes(searchTerm)) ||
+          (task.skills && task.skills.some(skill => skill.toLowerCase().includes(searchTerm)));
+        
+        const matchesCategory = !categoryFilter || (task.category_name && task.category_name === categoryFilter);
+        const budget = task.budget || `$${task.budget_min}-${task.budget_max}`;
+        const matchesBudget = !budgetFilter || checkBudgetRange(budget, budgetFilter);
+        
+        return matchesSearch && matchesCategory && matchesBudget;
+      });
+      
+      populateTasks(filteredTasks);
+    } else {
+      // Fallback to static data
+      let filteredTasks = platformData.tasks.filter(task => {
+        const matchesSearch = !searchTerm || 
+          task.title.toLowerCase().includes(searchTerm) ||
+          task.company.toLowerCase().includes(searchTerm) ||
+          task.skills.some(skill => skill.toLowerCase().includes(searchTerm));
+        
+        const matchesCategory = !categoryFilter || task.category === categoryFilter;
+        const matchesBudget = !budgetFilter || checkBudgetRange(task.budget, budgetFilter);
+        
+        return matchesSearch && matchesCategory && matchesBudget;
+      });
+      
+      populateTasks(filteredTasks);
+    }
+  } catch (error) {
+    console.error('Error searching tasks:', error);
+    // Fallback to static data
+    let filteredTasks = platformData.tasks.filter(task => {
+      const matchesSearch = !searchTerm || 
+        task.title.toLowerCase().includes(searchTerm) ||
+        task.company.toLowerCase().includes(searchTerm) ||
+        task.skills.some(skill => skill.toLowerCase().includes(searchTerm));
+      
+      const matchesCategory = !categoryFilter || task.category === categoryFilter;
+      const matchesBudget = !budgetFilter || checkBudgetRange(task.budget, budgetFilter);
+      
+      return matchesSearch && matchesCategory && matchesBudget;
+    });
+    
+    populateTasks(filteredTasks);
+  }
 }
 
 function getLocationRegion(location) {
@@ -1352,32 +1434,41 @@ function checkBudgetRange(budget, filter) {
 }
 
 // Task and Expert Details
-function showTaskDetails(taskId) {
-  const task = platformData.tasks.find(t => t.id === taskId);
+function showTaskDetails(task) {
   if (!task) return;
   
   const modal = document.getElementById('taskModal');
   const title = document.getElementById('taskModalTitle');
   const content = document.getElementById('taskModalContent');
   
+  // Handle both API data format and static data format
+  const budget = task.budget || `$${task.budget_min}-${task.budget_max}`;
+  const company = task.company || task.client_name || '未知公司';
+  const companyLogo = task.companyLogo || '🏢';
+  const category = task.category || task.category_name || '未分類';
+  const duration = task.duration || '未指定';
+  const experienceLevel = task.experience_level || task.experienceLevel || '未指定';
+  const deadline = task.deadline || '未指定';
+  const skills = task.skills || [];
+  
   title.textContent = task.title;
   content.innerHTML = `
     <div class="task-detail-header">
       <div style="display: flex; align-items: center; gap: var(--space-16); margin-bottom: var(--space-16);">
-        <div style="font-size: 2rem;">${task.companyLogo}</div>
+        <div style="font-size: 2rem;">${companyLogo}</div>
         <div>
-          <h4 style="margin: 0; margin-bottom: var(--space-4);">${task.company}</h4>
-          <div style="color: var(--color-text-secondary);">${task.category}</div>
+          <h4 style="margin: 0; margin-bottom: var(--space-4);">${company}</h4>
+          <div style="color: var(--color-text-secondary);">${category}</div>
         </div>
       </div>
     </div>
     
     <div class="task-detail-content">
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-16); margin-bottom: var(--space-24);">
-        <div><strong>預算:</strong> ${task.budget}</div>
-        <div><strong>期程:</strong> ${task.duration}</div>
-        <div><strong>經驗要求:</strong> ${task.experienceLevel}</div>
-        <div><strong>截止日期:</strong> ${task.deadline}</div>
+        <div><strong>預算:</strong> ${budget}</div>
+        <div><strong>期程:</strong> ${duration}</div>
+        <div><strong>經驗要求:</strong> ${experienceLevel}</div>
+        <div><strong>截止日期:</strong> ${deadline}</div>
       </div>
       
       <h5>任務描述</h5>
@@ -1385,7 +1476,7 @@ function showTaskDetails(taskId) {
       
       <h5>所需技能</h5>
       <div class="task-skills">
-        ${task.skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+        ${skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
       </div>
       
       <div style="margin-top: var(--space-24); text-align: center;">
@@ -1488,7 +1579,7 @@ function applyToTask(taskId) {
   openModal('application');
 }
 
-function handleTaskApplication() {
+async function handleTaskApplication() {
   const taskId = parseInt(document.getElementById('applicationModal').dataset.taskId);
   const proposalText = document.getElementById('proposalText').value;
   const bidAmount = document.getElementById('bidAmount').value;
@@ -1500,33 +1591,71 @@ function handleTaskApplication() {
     return;
   }
   
-  const application = {
-    id: generateSimpleUUID(),
-    taskId: taskId,
-    userId: currentUser.id,
-    proposalText: proposalText,
-    bidAmount: bidAmount,
-    deliveryTime: deliveryTime,
-    portfolioLink: portfolioLink,
-    status: 'pending',
-    appliedAt: new Date().toISOString()
-  };
-  
-  applications.push(application);
-  try {
-    localStorage.setItem('applications', JSON.stringify(applications));
-  } catch (e) {
-    console.log('Could not save application:', e);
+  if (!currentUser) {
+    showNotification('請先登入', 'error');
+    return;
   }
   
-  closeModal('applicationModal');
-  showNotification('申請已提交！', 'success');
-  
-  // Clear form
-  document.getElementById('proposalText').value = '';
-  document.getElementById('bidAmount').value = '';
-  document.getElementById('deliveryTime').value = '';
-  document.getElementById('portfolioLink').value = '';
+  try {
+    const response = await fetch('/api/task-applications', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        task_id: taskId,
+        expert_id: currentUser.id,
+        proposal_text: proposalText,
+        bid_amount: bidAmount,
+        delivery_time: deliveryTime,
+        portfolio_link: portfolioLink
+      })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      showNotification('申請已提交！', 'success');
+      closeModal('applicationModal');
+      
+      // Also store locally for immediate UI updates
+      const application = {
+        id: generateSimpleUUID(),
+        taskId: taskId,
+        userId: currentUser.id,
+        proposalText: proposalText,
+        bidAmount: bidAmount,
+        deliveryTime: deliveryTime,
+        portfolioLink: portfolioLink,
+        status: 'pending',
+        appliedAt: new Date().toISOString()
+      };
+      
+      applications.push(application);
+      try {
+        localStorage.setItem('applications', JSON.stringify(applications));
+      } catch (e) {
+        console.log('Could not save application locally:', e);
+      }
+      
+      // Clear form
+      document.getElementById('proposalText').value = '';
+      document.getElementById('bidAmount').value = '';
+      document.getElementById('deliveryTime').value = '';
+      document.getElementById('portfolioLink').value = '';
+      
+      // Refresh the marketplace to update application counts
+      setTimeout(() => {
+        loadAndPopulateTasks();
+      }, 1000);
+      
+    } else {
+      const error = await response.json();
+      showNotification('申請失敗：' + (error.error || '請稍後再試'), 'error');
+    }
+  } catch (error) {
+    console.error('Error submitting application:', error);
+    showNotification('申請失敗：網絡錯誤', 'error');
+  }
 }
 
 function toggleSaveTask(taskId) {
@@ -1832,3 +1961,4 @@ window.toggleSaveTask = toggleSaveTask;
 window.logout = logout;
 window.showMyTasks = showMyTasks;
 window.openPostTaskModal = openPostTaskModal;
+window.loadAndPopulateTasks = loadAndPopulateTasks;

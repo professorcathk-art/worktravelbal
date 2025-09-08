@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
   if (req.method === 'OPTIONS') {
@@ -61,6 +61,65 @@ module.exports = async (req, res) => {
       console.error('Error fetching task applications:', error);
       res.status(500).json({ 
         error: 'Failed to fetch applications',
+        details: error.message
+      });
+    }
+  } else if (req.method === 'POST') {
+    // Submit a new application
+    try {
+      const {
+        task_id,
+        expert_id,
+        proposal_text,
+        bid_amount,
+        delivery_time,
+        portfolio_link
+      } = req.body;
+
+      console.log('Creating application with data:', {
+        task_id,
+        expert_id,
+        bid_amount,
+        delivery_time
+      });
+
+      // Validate required fields
+      if (!task_id || !expert_id || !proposal_text || !bid_amount || !delivery_time) {
+        return res.status(400).json({ error: 'Missing required fields' });
+      }
+
+      // Check if user already applied to this task
+      const existingApplication = await pool.query(
+        'SELECT id FROM applications WHERE task_id = $1 AND expert_id = $2',
+        [task_id, expert_id]
+      );
+
+      if (existingApplication.rows.length > 0) {
+        return res.status(400).json({ error: 'You have already applied to this task' });
+      }
+
+      // Create the application
+      const result = await pool.query(`
+        INSERT INTO applications (
+          task_id, expert_id, proposal_text, bid_amount, 
+          delivery_time, portfolio_link, status, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        RETURNING *
+      `, [
+        task_id, expert_id, proposal_text, bid_amount,
+        delivery_time, portfolio_link, 'pending'
+      ]);
+
+      console.log('Application created successfully:', result.rows[0].id);
+      res.status(201).json({
+        message: 'Application submitted successfully',
+        application: result.rows[0]
+      });
+
+    } catch (error) {
+      console.error('Error creating application:', error);
+      res.status(500).json({ 
+        error: 'Failed to submit application',
         details: error.message
       });
     }
