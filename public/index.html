@@ -593,6 +593,71 @@
             </div>
         </div>
     </div>
+
+    <!-- Task Applications Modal -->
+    <div class="modal hidden" id="taskApplicationsModal">
+        <div class="modal-backdrop" onclick="closeModal('taskApplicationsModal')"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3 id="taskApplicationsModalTitle">任務申請者</h3>
+                <button class="modal-close" onclick="closeModal('taskApplicationsModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="taskApplicationsContent">
+                    <!-- Applications will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interview Scheduling Modal -->
+    <div class="modal hidden" id="interviewModal">
+        <div class="modal-backdrop" onclick="closeModal('interviewModal')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="interviewModalTitle">安排面試</h3>
+                <button class="modal-close" onclick="closeModal('interviewModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="interviewForm">
+                    <div class="form-group">
+                        <label class="form-label">申請者</label>
+                        <input type="text" class="form-control" id="interviewApplicantName" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">面試日期</label>
+                        <input type="date" class="form-control" id="interviewDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">面試時間</label>
+                        <input type="time" class="form-control" id="interviewTime" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">面試方式</label>
+                        <select class="form-control" id="interviewType" required>
+                            <option value="">選擇面試方式</option>
+                            <option value="video">視訊面試</option>
+                            <option value="phone">電話面試</option>
+                            <option value="in-person">現場面試</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">面試連結/地點</label>
+                        <input type="text" class="form-control" id="interviewLocation" placeholder="Zoom連結、地址或電話號碼">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">面試說明</label>
+                        <textarea class="form-control" id="interviewNotes" rows="3" placeholder="面試注意事項或準備資料"></textarea>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn btn--outline" onclick="closeModal('interviewModal')">取消</button>
+                        <button type="submit" class="btn btn--primary">安排面試</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

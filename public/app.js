@@ -521,10 +521,312 @@ function showMyTasks() {
   }
 }
 
-function viewTaskApplications(taskId) {
-  // This will open a modal to show applications for the task
+async function viewTaskApplications(taskId) {
   console.log('View applications for task:', taskId);
-  // TODO: Implement application viewing modal
+  
+  try {
+    // Fetch applications for this task
+    const response = await fetch(`/api/task-applications?task_id=${taskId}`);
+    
+    if (response.ok) {
+      const applications = await response.json();
+      console.log('Loaded applications:', applications);
+      displayTaskApplications(taskId, applications);
+    } else {
+      console.error('Failed to load applications');
+      showNotification('載入申請失敗', 'error');
+    }
+  } catch (error) {
+    console.error('Error loading applications:', error);
+    showNotification('載入申請時發生錯誤', 'error');
+  }
+}
+
+function displayTaskApplications(taskId, applications) {
+  const modal = document.getElementById('taskApplicationsModal');
+  const title = document.getElementById('taskApplicationsModalTitle');
+  const content = document.getElementById('taskApplicationsContent');
+  
+  // Store task ID for later use
+  modal.dataset.taskId = taskId;
+  
+  // Find the task to get its title
+  const task = platformData.tasks.find(t => t.id === taskId);
+  const taskTitle = task ? task.title : '任務';
+  
+  title.textContent = `${taskTitle} - 申請者 (${applications.length})`;
+  
+  if (applications.length === 0) {
+    content.innerHTML = `
+      <div style="text-align: center; padding: var(--space-40); color: var(--color-text-secondary);">
+        <div style="font-size: 3rem; margin-bottom: var(--space-16);">📝</div>
+        <h4>尚無申請者</h4>
+        <p>此任務目前還沒有收到任何申請</p>
+      </div>
+    `;
+  } else {
+    content.innerHTML = applications.map(app => `
+      <div class="application-card" style="padding: var(--space-20); background: var(--color-bg-1); border-radius: var(--radius-base); border: 1px solid var(--color-border); margin-bottom: var(--space-16);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-16);">
+          <div style="display: flex; align-items: center; gap: var(--space-12);">
+            <div style="width: 48px; height: 48px; background: var(--color-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 1.2rem;">
+              ${app.expert_name ? app.expert_name.charAt(0).toUpperCase() : 'A'}
+            </div>
+            <div>
+              <h4 style="margin: 0; color: var(--color-text-primary);">${app.expert_name || '未知申請者'}</h4>
+              <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                ${app.expert_email || ''}
+              </div>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div class="application-status" style="padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm); background: ${getApplicationStatusColor(app.status)}; color: white; margin-bottom: var(--space-8);">
+              ${getApplicationStatusText(app.status)}
+            </div>
+            <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+              ${new Date(app.created_at).toLocaleDateString('zh-TW')}
+            </div>
+          </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-16); margin-bottom: var(--space-16);">
+          <div>
+            <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">提案金額</div>
+            <div style="font-weight: var(--font-weight-medium); color: var(--color-success);">$${app.bid_amount}</div>
+          </div>
+          <div>
+            <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">交付時間</div>
+            <div style="font-weight: var(--font-weight-medium);">${app.delivery_time} 天</div>
+          </div>
+          <div>
+            <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">評分</div>
+            <div style="font-weight: var(--font-weight-medium);">${app.rating || '新用戶'}</div>
+          </div>
+          <div>
+            <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">完成項目</div>
+            <div style="font-weight: var(--font-weight-medium);">${app.completed_projects || 0}</div>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: var(--space-16);">
+          <h5 style="margin-bottom: var(--space-8);">提案內容</h5>
+          <p style="color: var(--color-text-secondary); line-height: 1.6; background: var(--color-bg-2); padding: var(--space-12); border-radius: var(--radius-sm);">
+            ${app.proposal_text || '無提案內容'}
+          </p>
+        </div>
+        
+        ${app.portfolio_link ? `
+        <div style="margin-bottom: var(--space-16);">
+          <h5 style="margin-bottom: var(--space-8);">作品集</h5>
+          <a href="${app.portfolio_link}" target="_blank" style="color: var(--color-primary); text-decoration: none;">
+            ${app.portfolio_link}
+          </a>
+        </div>
+        ` : ''}
+        
+        ${app.expert_skills && app.expert_skills.length > 0 ? `
+        <div style="margin-bottom: var(--space-16);">
+          <h5 style="margin-bottom: var(--space-8);">專業技能</h5>
+          <div class="expert-skills">
+            ${app.expert_skills.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+          </div>
+        </div>
+        ` : ''}
+        
+        <div style="display: flex; gap: var(--space-8); justify-content: flex-end; flex-wrap: wrap;">
+          <button class="btn btn--outline btn--sm" onclick="rejectApplication('${app.id}')">
+            拒絕
+          </button>
+          <button class="btn btn--outline btn--sm" onclick="scheduleInterview('${app.id}', '${app.expert_name}')">
+            安排面試
+          </button>
+          <button class="btn btn--primary btn--sm" onclick="acceptApplication('${app.id}')">
+            接受申請
+          </button>
+        </div>
+      </div>
+    `).join('');
+  }
+  
+  modal.classList.remove('hidden');
+}
+
+function getApplicationStatusColor(status) {
+  switch (status) {
+    case 'pending': return 'var(--color-warning)';
+    case 'interview_scheduled': return 'var(--color-info)';
+    case 'interview_completed': return 'var(--color-primary)';
+    case 'accepted': return 'var(--color-success)';
+    case 'rejected': return 'var(--color-error)';
+    case 'withdrawn': return 'var(--color-text-secondary)';
+    default: return 'var(--color-text-secondary)';
+  }
+}
+
+function getApplicationStatusText(status) {
+  switch (status) {
+    case 'pending': return '待審核';
+    case 'interview_scheduled': return '已安排面試';
+    case 'interview_completed': return '面試完成';
+    case 'accepted': return '已接受';
+    case 'rejected': return '已拒絕';
+    case 'withdrawn': return '已撤回';
+    default: return '未知';
+  }
+}
+
+function scheduleInterview(applicationId, applicantName) {
+  console.log('Schedule interview for application:', applicationId);
+  
+  // Store the application ID for the form submission
+  document.getElementById('interviewModal').dataset.applicationId = applicationId;
+  document.getElementById('interviewApplicantName').value = applicantName;
+  
+  // Set default date to tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('interviewDate').value = tomorrow.toISOString().split('T')[0];
+  
+  // Set default time to 2 PM
+  document.getElementById('interviewTime').value = '14:00';
+  
+  closeModal('taskApplicationsModal');
+  openModal('interview');
+}
+
+async function acceptApplication(applicationId) {
+  console.log('Accept application:', applicationId);
+  
+  try {
+    const response = await fetch(`/api/task-applications/${applicationId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'accepted'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('申請已接受！', 'success');
+      // Refresh the applications view
+      const taskId = document.getElementById('taskApplicationsModal').dataset.taskId;
+      if (taskId) {
+        viewTaskApplications(taskId);
+      }
+    } else {
+      const error = await response.json();
+      showNotification('操作失敗：' + (error.error || '請稍後再試'), 'error');
+    }
+  } catch (error) {
+    console.error('Error accepting application:', error);
+    showNotification('操作失敗：網絡錯誤', 'error');
+  }
+}
+
+async function rejectApplication(applicationId) {
+  console.log('Reject application:', applicationId);
+  
+  if (!confirm('確定要拒絕此申請嗎？此操作無法撤銷。')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/task-applications/${applicationId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'rejected'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('申請已拒絕', 'info');
+      // Refresh the applications view
+      const taskId = document.getElementById('taskApplicationsModal').dataset.taskId;
+      if (taskId) {
+        viewTaskApplications(taskId);
+      }
+    } else {
+      const error = await response.json();
+      showNotification('操作失敗：' + (error.error || '請稍後再試'), 'error');
+    }
+  } catch (error) {
+    console.error('Error rejecting application:', error);
+    showNotification('操作失敗：網絡錯誤', 'error');
+  }
+}
+
+async function handleInterviewScheduling() {
+  const applicationId = document.getElementById('interviewModal').dataset.applicationId;
+  const date = document.getElementById('interviewDate').value;
+  const time = document.getElementById('interviewTime').value;
+  const type = document.getElementById('interviewType').value;
+  const location = document.getElementById('interviewLocation').value;
+  const notes = document.getElementById('interviewNotes').value;
+  
+  if (!date || !time || !type) {
+    showNotification('請填寫所有必填欄位', 'error');
+    return;
+  }
+  
+  try {
+    // For now, we'll store the interview data locally and update the application status
+    // In a real app, this would be stored in the database
+    const interviewData = {
+      applicationId: applicationId,
+      date: date,
+      time: time,
+      type: type,
+      location: location,
+      notes: notes,
+      scheduledAt: new Date().toISOString()
+    };
+    
+    // Store interview data locally
+    let interviews = JSON.parse(localStorage.getItem('scheduledInterviews') || '[]');
+    interviews.push(interviewData);
+    localStorage.setItem('scheduledInterviews', JSON.stringify(interviews));
+    
+    // Update application status to "interview_scheduled"
+    const response = await fetch(`/api/task-applications/${applicationId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'interview_scheduled',
+        interview_date: date,
+        interview_time: time,
+        interview_type: type,
+        interview_location: location,
+        interview_notes: notes
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('面試已安排！', 'success');
+      closeModal('interviewModal');
+      
+      // Clear form
+      document.getElementById('interviewForm').reset();
+      
+      // Refresh the applications view
+      const taskId = document.getElementById('taskApplicationsModal').dataset.taskId;
+      if (taskId) {
+        viewTaskApplications(taskId);
+      }
+    } else {
+      const error = await response.json();
+      showNotification('安排面試失敗：' + (error.error || '請稍後再試'), 'error');
+    }
+  } catch (error) {
+    console.error('Error scheduling interview:', error);
+    showNotification('安排面試失敗：網絡錯誤', 'error');
+  }
 }
 
 function editTask(taskId) {
@@ -713,6 +1015,15 @@ function setupFormHandlers() {
     applicationForm.addEventListener('submit', function(e) {
       e.preventDefault();
       handleTaskApplication();
+    });
+  }
+
+  // Interview form
+  const interviewForm = document.getElementById('interviewForm');
+  if (interviewForm) {
+    interviewForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      handleInterviewScheduling();
     });
   }
 
@@ -2040,3 +2351,7 @@ window.logout = logout;
 window.showMyTasks = showMyTasks;
 window.openPostTaskModal = openPostTaskModal;
 window.loadAndPopulateTasks = loadAndPopulateTasks;
+window.viewTaskApplications = viewTaskApplications;
+window.scheduleInterview = scheduleInterview;
+window.acceptApplication = acceptApplication;
+window.rejectApplication = rejectApplication;

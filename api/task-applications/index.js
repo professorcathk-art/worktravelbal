@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
   if (req.method === 'OPTIONS') {
@@ -120,6 +120,75 @@ module.exports = async (req, res) => {
       console.error('Error creating application:', error);
       res.status(500).json({ 
         error: 'Failed to submit application',
+        details: error.message
+      });
+    }
+  } else if (req.method === 'PATCH') {
+    // Update application status
+    try {
+      const applicationId = req.url.split('/').pop();
+      const { 
+        status, 
+        interview_date, 
+        interview_time, 
+        interview_type, 
+        interview_location, 
+        interview_notes 
+      } = req.body;
+
+      console.log('Updating application:', applicationId, 'with status:', status);
+
+      if (!applicationId || !status) {
+        return res.status(400).json({ error: 'Application ID and status are required' });
+      }
+
+      // Build update query dynamically based on provided fields
+      let updateFields = ['status = $2', 'updated_at = NOW()'];
+      let values = [applicationId, status];
+      let paramIndex = 3;
+
+      if (interview_date) {
+        updateFields.push(`interview_date = $${paramIndex++}`);
+        values.push(interview_date);
+      }
+      if (interview_time) {
+        updateFields.push(`interview_time = $${paramIndex++}`);
+        values.push(interview_time);
+      }
+      if (interview_type) {
+        updateFields.push(`interview_type = $${paramIndex++}`);
+        values.push(interview_type);
+      }
+      if (interview_location) {
+        updateFields.push(`interview_location = $${paramIndex++}`);
+        values.push(interview_location);
+      }
+      if (interview_notes) {
+        updateFields.push(`interview_notes = $${paramIndex++}`);
+        values.push(interview_notes);
+      }
+
+      const result = await pool.query(`
+        UPDATE applications 
+        SET ${updateFields.join(', ')}
+        WHERE id = $1
+        RETURNING *
+      `, values);
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      console.log('Application updated successfully:', result.rows[0].id);
+      res.status(200).json({
+        message: 'Application updated successfully',
+        application: result.rows[0]
+      });
+
+    } catch (error) {
+      console.error('Error updating application:', error);
+      res.status(500).json({ 
+        error: 'Failed to update application',
         details: error.message
       });
     }
