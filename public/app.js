@@ -333,6 +333,12 @@ document.addEventListener('DOMContentLoaded', function() {
 async function handleTaskSubmission(e) {
     e.preventDefault();
     
+    // Check if user is logged in
+    if (!currentUser) {
+        showNotification('請先登入', 'error');
+        return;
+    }
+    
     const formData = {
         title: document.getElementById('taskTitle').value,
         category: document.getElementById('taskCategory').value,
@@ -391,19 +397,30 @@ function generateSimpleUUID() {
 
 // Load and display my tasks
 async function loadMyTasks() {
-  if (!currentUser) return;
+  if (!currentUser) {
+    console.log('No current user, cannot load tasks');
+    return;
+  }
+  
+  console.log('Loading tasks for user:', currentUser.id);
   
   try {
     const response = await fetch(`/api/my-tasks?client_id=${currentUser.id}`);
+    console.log('Response status:', response.status);
+    
     if (response.ok) {
       const tasks = await response.json();
+      console.log('Loaded tasks:', tasks);
       displayMyTasks(tasks);
       updateTaskStats(tasks);
     } else {
-      console.error('Failed to load tasks');
+      const errorText = await response.text();
+      console.error('Failed to load tasks:', response.status, errorText);
+      showNotification('載入任務失敗', 'error');
     }
   } catch (error) {
     console.error('Error loading tasks:', error);
+    showNotification('載入任務時發生錯誤', 'error');
   }
 }
 
@@ -495,7 +512,13 @@ function getStatusText(status) {
 }
 
 function showMyTasks() {
+  console.log('showMyTasks called');
   loadMyTasks();
+  
+  // Also refresh the portal to show updated task list
+  if (currentUser && currentUser.type === 'client') {
+    populateClientPortal(document.getElementById('portalContent'));
+  }
 }
 
 function viewTaskApplications(taskId) {
@@ -1807,3 +1830,5 @@ window.showExpertProfile = showExpertProfile;
 window.applyToTask = applyToTask;
 window.toggleSaveTask = toggleSaveTask;
 window.logout = logout;
+window.showMyTasks = showMyTasks;
+window.openPostTaskModal = openPostTaskModal;

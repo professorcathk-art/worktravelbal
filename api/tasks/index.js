@@ -100,19 +100,31 @@ module.exports = async (req, res) => {
       let userResult = await pool.query('SELECT id FROM users WHERE id = $1', [client_id]);
       if (userResult.rows.length === 0) {
         console.log('User not found, creating demo user:', client_id);
-        // Create a demo user for the task
-        await pool.query(`
-          INSERT INTO users (id, email, password_hash, name, user_type, verified, created_at)
-          VALUES ($1, $2, $3, $4, $5, $6, NOW())
-        `, [
-          client_id,
-          'demo@example.com',
-          'demo_hash',
-          'Demo Client',
-          'client',
-          true
-        ]);
-        console.log('Demo user created successfully');
+        // Create a demo user for the task with unique email
+        const demoEmail = `demo_${client_id.replace(/-/g, '')}@example.com`;
+        try {
+          await pool.query(`
+            INSERT INTO users (id, email, password_hash, name, user_type, verified, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+          `, [
+            client_id,
+            demoEmail,
+            'demo_hash',
+            'Demo Client',
+            'client',
+            true
+          ]);
+          console.log('Demo user created successfully');
+        } catch (userError) {
+          console.error('Error creating demo user:', userError);
+          // If user creation fails, try to find existing user with same email pattern
+          const existingUserResult = await pool.query('SELECT id FROM users WHERE email = $1', [demoEmail]);
+          if (existingUserResult.rows.length > 0) {
+            console.log('Using existing demo user');
+          } else {
+            throw userError;
+          }
+        }
       }
 
       // First, find or create the category
