@@ -25,13 +25,165 @@ module.exports = async (req, res) => {
   try {
     console.log('Setting up database tables...');
     
-    // Read the schema file
-    const schemaPath = path.join(process.cwd(), 'database', 'schema.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
+    // Create tables one by one with IF NOT EXISTS
+    const createTables = `
+      -- Enable UUID extension
+      CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+      
+      -- Users table
+      CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          name VARCHAR(255) NOT NULL,
+          user_type VARCHAR(50) NOT NULL CHECK (user_type IN ('expert', 'client')),
+          phone VARCHAR(20),
+          bio TEXT,
+          avatar VARCHAR(500),
+          company VARCHAR(255),
+          website VARCHAR(500),
+          location VARCHAR(255),
+          timezone VARCHAR(50),
+          verified BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Expert profiles table
+      CREATE TABLE IF NOT EXISTS expert_profiles (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          hourly_rate DECIMAL(10,2),
+          current_location VARCHAR(255),
+          rating DECIMAL(3,2) DEFAULT 0.0,
+          reviews_count INTEGER DEFAULT 0,
+          response_time VARCHAR(50),
+          availability VARCHAR(50),
+          completed_projects INTEGER DEFAULT 0,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Client profiles table
+      CREATE TABLE IF NOT EXISTS client_profiles (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          company_size VARCHAR(50),
+          industry VARCHAR(255),
+          budget_range VARCHAR(50),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Skills table
+      CREATE TABLE IF NOT EXISTS skills (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          name VARCHAR(255) UNIQUE NOT NULL,
+          category VARCHAR(255),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Expert skills table
+      CREATE TABLE IF NOT EXISTS expert_skills (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          expert_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          skill_id UUID REFERENCES skills(id) ON DELETE CASCADE,
+          proficiency_level INTEGER CHECK (proficiency_level BETWEEN 1 AND 5),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(expert_id, skill_id)
+      );
+
+      -- Languages table
+      CREATE TABLE IF NOT EXISTS languages (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          name VARCHAR(100) UNIQUE NOT NULL,
+          code VARCHAR(10) UNIQUE NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Expert languages table
+      CREATE TABLE IF NOT EXISTS expert_languages (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          expert_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          language_id UUID REFERENCES languages(id) ON DELETE CASCADE,
+          proficiency_level VARCHAR(50),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(expert_id, language_id)
+      );
+
+      -- Task categories table
+      CREATE TABLE IF NOT EXISTS task_categories (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          name VARCHAR(255) UNIQUE NOT NULL,
+          description TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Tasks table
+      CREATE TABLE IF NOT EXISTS tasks (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          client_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          title VARCHAR(500) NOT NULL,
+          description TEXT NOT NULL,
+          budget_min DECIMAL(10,2),
+          budget_max DECIMAL(10,2),
+          currency VARCHAR(10) DEFAULT 'USD',
+          duration VARCHAR(100),
+          category_id UUID REFERENCES task_categories(id),
+          experience_level VARCHAR(50),
+          deadline DATE,
+          timezone VARCHAR(50),
+          status VARCHAR(50) DEFAULT 'open',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Task skills table
+      CREATE TABLE IF NOT EXISTS task_skills (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+          skill_id UUID REFERENCES skills(id) ON DELETE CASCADE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(task_id, skill_id)
+      );
+
+      -- Applications table
+      CREATE TABLE IF NOT EXISTS applications (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+          expert_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          proposal_text TEXT NOT NULL,
+          bid_amount DECIMAL(10,2),
+          delivery_time VARCHAR(100),
+          portfolio_link VARCHAR(500),
+          status VARCHAR(50) DEFAULT 'pending',
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Destinations table
+      CREATE TABLE IF NOT EXISTS destinations (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          name VARCHAR(255) UNIQUE NOT NULL,
+          country VARCHAR(255) NOT NULL,
+          nomad_count INTEGER DEFAULT 0,
+          cost_of_living DECIMAL(10,2),
+          internet_speed DECIMAL(5,2),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Saved tasks table
+      CREATE TABLE IF NOT EXISTS saved_tasks (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+          task_id UUID REFERENCES tasks(id) ON DELETE CASCADE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(user_id, task_id)
+      );
+    `;
     
-    // Execute the schema
-    await pool.query(schema);
-    console.log('Database schema created successfully');
+    await pool.query(createTables);
+    console.log('Database tables created/verified successfully');
     
     // Insert initial data
     const initialData = `
