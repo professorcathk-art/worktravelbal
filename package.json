@@ -2,7 +2,7 @@
   "name": "worktravelbal",
   "version": "1.0.0",
   "description": "數位遊牧專家平台 - 實現邊旅遊邊工作的夢想",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "live-server public --port=3000 --open",
