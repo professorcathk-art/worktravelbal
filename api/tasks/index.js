@@ -24,6 +24,9 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') {
     // Get all tasks
     try {
+      console.log('Attempting to connect to database...');
+      console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+      
       const result = await pool.query(`
         SELECT t.*, tc.name as category_name, u.name as client_name,
                ARRAY_AGG(DISTINCT s.name) as skills
@@ -37,10 +40,20 @@ module.exports = async (req, res) => {
         ORDER BY t.created_at DESC
       `);
       
+      console.log('Query successful, found', result.rows.length, 'tasks');
       res.status(200).json(result.rows);
     } catch (error) {
       console.error('Error fetching tasks:', error);
-      res.status(500).json({ error: 'Failed to fetch tasks' });
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        detail: error.detail
+      });
+      res.status(500).json({ 
+        error: 'Failed to fetch tasks',
+        details: error.message,
+        code: error.code
+      });
     }
   } else if (req.method === 'POST') {
     // Create a new task
