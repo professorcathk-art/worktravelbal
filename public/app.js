@@ -381,6 +381,14 @@ async function handleTaskSubmission(e) {
     }
 }
 
+// Generate a simple UUID-like ID for demo purposes
+function generateSimpleUUID() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
@@ -806,7 +814,7 @@ function handleLogin() {
   
   if (email && password) {
     currentUser = {
-      id: Date.now(),
+      id: generateSimpleUUID(),
       name: email.split('@')[0],
       email: email,
       type: 'expert',
@@ -846,7 +854,7 @@ function handleRegister() {
   }
   
   const newUser = {
-    id: Date.now(),
+    id: generateSimpleUUID(),
     name: name,
     email: email,
     phone: phone,
@@ -1349,7 +1357,7 @@ function handleTaskApplication() {
   }
   
   const application = {
-    id: Date.now(),
+    id: generateSimpleUUID(),
     taskId: taskId,
     userId: currentUser.id,
     proposalText: proposalText,

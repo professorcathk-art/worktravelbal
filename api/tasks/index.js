@@ -89,6 +89,13 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
+      // Validate client_id is a valid UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(client_id)) {
+        console.log('Invalid client_id format:', client_id);
+        return res.status(400).json({ error: 'Invalid client ID format' });
+      }
+
       // First, find or create the category
       let categoryResult = await pool.query('SELECT id FROM task_categories WHERE name = $1', [category]);
       let categoryId;
