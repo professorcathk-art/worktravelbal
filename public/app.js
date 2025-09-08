@@ -952,40 +952,84 @@ function updateLanguagesTags() {
 }
 
 // Authentication
-function handleLogin() {
+async function handleLogin() {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
   
   if (email && password) {
-    currentUser = {
-      id: generateSimpleUUID(),
-      name: email.split('@')[0],
-      email: email,
-      type: 'expert',
-      verified: Math.random() > 0.3,
-      skills: [],
-      languages: [],
-      applications: [],
-      profileComplete: 60,
-      location: "台北, 台灣",
-      hourlyRate: "$40-60",
-      completedProjects: Math.floor(Math.random() * 50) + 10
-    };
-    
     try {
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    } catch (e) {
-      console.log('Could not save to localStorage:', e);
+      // First, try to find existing user
+      const response = await fetch(`/api/users?email=${encodeURIComponent(email)}`);
+      let user;
+      
+      if (response.ok) {
+        const users = await response.json();
+        if (users.length > 0) {
+          user = users[0];
+          console.log('Found existing user:', user);
+        }
+      }
+      
+      // If user doesn't exist, create a new one
+      if (!user) {
+        console.log('User not found, creating new user');
+        const newUserResponse = await fetch('/api/users', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: email,
+            password_hash: 'demo_hash',
+            name: email.split('@')[0],
+            user_type: 'expert'
+          })
+        });
+        
+        if (newUserResponse.ok) {
+          const newUser = await newUserResponse.json();
+          user = newUser.user;
+          console.log('Created new user:', user);
+        } else {
+          throw new Error('Failed to create user');
+        }
+      }
+      
+      // Set up current user with additional demo data
+      currentUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        type: user.user_type,
+        verified: user.verified || false,
+        skills: [],
+        languages: [],
+        applications: [],
+        profileComplete: 60,
+        location: "台北, 台灣",
+        hourlyRate: "$40-60",
+        completedProjects: Math.floor(Math.random() * 50) + 10
+      };
+      
+      try {
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      } catch (e) {
+        console.log('Could not save to localStorage:', e);
+      }
+      
+      updateAuthState();
+      closeModal('loginModal');
+      showNotification('登入成功！', 'success');
+      showSection('portal');
+      
+    } catch (error) {
+      console.error('Login error:', error);
+      showNotification('登入失敗：' + error.message, 'error');
     }
-    
-    updateAuthState();
-    closeModal('loginModal');
-    showNotification('登入成功！', 'success');
-    showSection('portal');
   }
 }
 
-function handleRegister() {
+async function handleRegister() {
   const name = document.getElementById('registerName').value;
   const email = document.getElementById('registerEmail').value;
   const password = document.getElementById('registerPassword').value;
@@ -997,46 +1041,77 @@ function handleRegister() {
     return;
   }
   
-  const newUser = {
-    id: generateSimpleUUID(),
-    name: name,
-    email: email,
-    phone: phone,
-    type: selectedUserType,
-    verified: false,
-    bio: bio,
-    skills: [...selectedSkills],
-    languages: [...selectedLanguages],
-    profileComplete: calculateProfileCompletion(),
-    applications: [],
-    savedTasks: []
-  };
-  
-  if (selectedUserType === 'expert') {
-    newUser.hourlyRate = document.getElementById('hourlyRate').value;
-    newUser.location = document.getElementById('currentLocation').value;
-    newUser.completedProjects = 0;
-    newUser.rating = 0;
-    newUser.reviews = 0;
-    newUser.responseTime = "新用戶";
-    newUser.availability = "可接案";
-  } else {
-    newUser.companySize = document.getElementById('companySize').value;
-    newUser.industry = document.getElementById('industry').value;
-    newUser.postedTasks = [];
-  }
-  
-  currentUser = newUser;
   try {
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-  } catch (e) {
-    console.log('Could not save to localStorage:', e);
+    // Create user in database
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: email,
+        password_hash: 'demo_hash', // In a real app, this would be properly hashed
+        name: name,
+        user_type: selectedUserType,
+        phone: phone,
+        bio: bio
+      })
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      const dbUser = result.user;
+      
+      // Set up current user with additional demo data
+      const newUser = {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        phone: dbUser.phone,
+        type: dbUser.user_type,
+        verified: dbUser.verified,
+        bio: dbUser.bio,
+        skills: [...selectedSkills],
+        languages: [...selectedLanguages],
+        profileComplete: calculateProfileCompletion(),
+        applications: [],
+        savedTasks: []
+      };
+      
+      if (selectedUserType === 'expert') {
+        newUser.hourlyRate = document.getElementById('hourlyRate').value;
+        newUser.location = document.getElementById('currentLocation').value;
+        newUser.completedProjects = 0;
+        newUser.rating = 0;
+        newUser.reviews = 0;
+        newUser.responseTime = "新用戶";
+        newUser.availability = "可接案";
+      } else {
+        newUser.companySize = document.getElementById('companySize').value;
+        newUser.industry = document.getElementById('industry').value;
+        newUser.postedTasks = [];
+      }
+      
+      currentUser = newUser;
+      try {
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      } catch (e) {
+        console.log('Could not save to localStorage:', e);
+      }
+      
+      updateAuthState();
+      closeModal('registerModal');
+      showNotification('註冊成功！歡迎加入數位遊牧平台。', 'success');
+      showSection('portal');
+      
+    } else {
+      const error = await response.json();
+      showNotification('註冊失敗：' + (error.error || '請稍後再試'), 'error');
+    }
+  } catch (error) {
+    console.error('Registration error:', error);
+    showNotification('註冊失敗：網絡錯誤', 'error');
   }
-  
-  updateAuthState();
-  closeModal('registerModal');
-  showNotification('註冊成功！歡迎加入數位遊牧平台。', 'success');
-  showSection('portal');
 }
 
 function resetRegisterForm() {
