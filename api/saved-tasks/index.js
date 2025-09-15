@@ -47,16 +47,17 @@ module.exports = async (req, res) => {
           t.created_at as task_created_at,
           tc.name as category_name,
           u.name as client_name,
-          u.company as client_company,
+          cp.company_size as client_company,
           ARRAY_AGG(DISTINCT s.name) as skills
         FROM saved_tasks st
         JOIN tasks t ON st.task_id = t.id
         LEFT JOIN task_categories tc ON t.category_id = tc.id
         LEFT JOIN users u ON t.client_id = u.id
+        LEFT JOIN client_profiles cp ON u.id = cp.user_id
         LEFT JOIN task_skills ts ON t.id = ts.task_id
         LEFT JOIN skills s ON ts.skill_id = s.id
         WHERE st.user_id = $1
-        GROUP BY st.id, t.id, tc.name, u.name, u.company
+        GROUP BY st.id, t.id, tc.name, u.name, cp.company_size
         ORDER BY st.created_at DESC
       `, [user_id]);
       
