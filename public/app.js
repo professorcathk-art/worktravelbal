@@ -889,7 +889,48 @@ function setupEventListeners() {
 
   // Remove all onclick attributes and replace with proper event listeners
   document.querySelectorAll('[onclick]').forEach(element => {
+    const onclickValue = element.getAttribute('onclick');
     element.removeAttribute('onclick');
+    
+    // Add event listeners for modal links
+    if (onclickValue && onclickValue.includes('openModal')) {
+      element.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Extract modal name and user type from onclick
+        const modalMatch = onclickValue.match(/openModal\('([^']+)'(?:,\s*'([^']+)')?\)/);
+        if (modalMatch) {
+          const modalName = modalMatch[1];
+          const userType = modalMatch[2];
+          openModal(modalName, userType);
+        }
+      });
+    } else if (onclickValue && onclickValue.includes('closeModal')) {
+      element.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Extract modal name from onclick
+        const modalMatch = onclickValue.match(/closeModal\('([^']+)'\)/);
+        if (modalMatch) {
+          const modalName = modalMatch[1];
+          closeModal(modalName);
+        }
+      });
+    } else if (onclickValue && onclickValue.includes('closeModal') && onclickValue.includes('openModal')) {
+      // Handle combined close and open modal actions
+      element.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Extract both modal names
+        const closeMatch = onclickValue.match(/closeModal\('([^']+)'\)/);
+        const openMatch = onclickValue.match(/openModal\('([^']+)'(?:,\s*'([^']+)')?\)/);
+        
+        if (closeMatch && openMatch) {
+          const closeModalName = closeMatch[1];
+          const openModalName = openMatch[1];
+          const userType = openMatch[2];
+          closeModal(closeModalName);
+          openModal(openModalName, userType);
+        }
+      });
+    }
   });
 
   // Navigation links
