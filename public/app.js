@@ -930,6 +930,12 @@ function setupEventListeners() {
           openModal(openModalName, userType);
         }
       });
+    } else if (onclickValue && onclickValue.includes('logout()')) {
+      // Handle logout buttons
+      element.addEventListener('click', function(e) {
+        e.preventDefault();
+        logout();
+      });
     }
   });
 
@@ -1724,6 +1730,54 @@ async function loadVerifiedExperts(filters = {}) {
   }
 }
 
+// Load user applications from API
+async function loadUserApplications() {
+  try {
+    if (!currentUser || !currentUser.id) {
+      console.log('No current user for loading applications');
+      return [];
+    }
+    
+    console.log('Loading applications for user:', currentUser.id);
+    const response = await fetch(`/api/user-applications?user_id=${currentUser.id}`);
+    if (response.ok) {
+      const applications = await response.json();
+      console.log('Loaded user applications:', applications);
+      return applications;
+    } else {
+      console.error('Failed to load user applications');
+      return [];
+    }
+  } catch (error) {
+    console.error('Error loading user applications:', error);
+    return [];
+  }
+}
+
+// Load user saved tasks from API
+async function loadUserSavedTasks() {
+  try {
+    if (!currentUser || !currentUser.id) {
+      console.log('No current user for loading saved tasks');
+      return [];
+    }
+    
+    console.log('Loading saved tasks for user:', currentUser.id);
+    const response = await fetch(`/api/user-saved-tasks?user_id=${currentUser.id}`);
+    if (response.ok) {
+      const savedTasks = await response.json();
+      console.log('Loaded user saved tasks:', savedTasks);
+      return savedTasks;
+    } else {
+      console.error('Failed to load user saved tasks');
+      return [];
+    }
+  } catch (error) {
+    console.error('Error loading user saved tasks:', error);
+    return [];
+  }
+}
+
 function populateExperts(experts = platformData.experts) {
   const grid = document.getElementById('expertsGrid');
   if (!grid) return;
@@ -2296,11 +2350,19 @@ function populatePortal() {
 }
 
 async function populateExpertPortal(content) {
-  // Load real data from APIs
-  const [userApplications, userSavedTasks] = await Promise.all([
-    loadUserApplications(),
-    loadUserSavedTasks()
-  ]);
+  // Load real data from APIs with error handling
+  let userApplications = [];
+  let userSavedTasks = [];
+  
+  try {
+    [userApplications, userSavedTasks] = await Promise.all([
+      loadUserApplications(),
+      loadUserSavedTasks()
+    ]);
+  } catch (error) {
+    console.error('Error loading expert portal data:', error);
+    // Continue with empty arrays if API calls fail
+  }
   
   content.innerHTML = `
     <div class="portal-grid">
