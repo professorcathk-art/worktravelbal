@@ -861,12 +861,35 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
-function initializeApp() {
+async function initializeApp() {
   // Check if user is logged in
   try {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       currentUser = JSON.parse(savedUser);
+      
+      // Load saved tasks from database if user is logged in
+      if (currentUser && currentUser.id) {
+        try {
+          const savedTasksResponse = await fetch(`/api/saved-tasks?user_id=${currentUser.id}`);
+          if (savedTasksResponse.ok) {
+            const savedTasksData = await savedTasksResponse.json();
+            savedTasks = savedTasksData.map(st => st.task_id);
+            console.log('Loaded saved tasks on app init:', savedTasks);
+          }
+        } catch (error) {
+          console.error('Error loading saved tasks on app init:', error);
+          // Fallback to localStorage
+          try {
+            const savedTasksFromStorage = localStorage.getItem('savedTasks');
+            if (savedTasksFromStorage) {
+              savedTasks = JSON.parse(savedTasksFromStorage);
+            }
+          } catch (e) {
+            console.log('Could not load saved tasks from localStorage:', e);
+          }
+        }
+      }
     }
     // Always update auth state, whether user is logged in or not
     updateAuthState();
@@ -1394,6 +1417,27 @@ async function handleLogin() {
         completedProjects: Math.floor(Math.random() * 50) + 10
       };
       
+      // Load saved tasks from database
+      try {
+        const savedTasksResponse = await fetch(`/api/saved-tasks?user_id=${currentUser.id}`);
+        if (savedTasksResponse.ok) {
+          const savedTasksData = await savedTasksResponse.json();
+          savedTasks = savedTasksData.map(st => st.task_id);
+          console.log('Loaded saved tasks for user:', savedTasks);
+        }
+      } catch (error) {
+        console.error('Error loading saved tasks on login:', error);
+        // Fallback to localStorage
+        try {
+          const savedTasksFromStorage = localStorage.getItem('savedTasks');
+          if (savedTasksFromStorage) {
+            savedTasks = JSON.parse(savedTasksFromStorage);
+          }
+        } catch (e) {
+          console.log('Could not load saved tasks from localStorage:', e);
+        }
+      }
+      
       try {
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
       } catch (e) {
@@ -1785,7 +1829,7 @@ async function loadUserSavedTasks() {
     }
     
     console.log('Loading saved tasks for user:', currentUser.id);
-    const response = await fetch(`/api/user-saved-tasks?user_id=${currentUser.id}`);
+    const response = await fetch(`/api/saved-tasks?user_id=${currentUser.id}`);
     if (response.ok) {
       const savedTasks = await response.json();
       console.log('Loaded user saved tasks:', savedTasks);
@@ -2331,31 +2375,71 @@ async function handleTaskApplication() {
   }
 }
 
-function toggleSaveTask(taskId) {
+async function toggleSaveTask(taskId) {
   if (!currentUser) {
     openModal('login');
     return;
   }
   
-  const index = savedTasks.indexOf(taskId);
-  if (index > -1) {
-    savedTasks.splice(index, 1);
-    showNotification('已取消收藏', 'info');
-  } else {
-    savedTasks.push(taskId);
-    showNotification('已收藏任務', 'success');
-  }
-  
   try {
-    localStorage.setItem('savedTasks', JSON.stringify(savedTasks));
-  } catch (e) {
-    console.log('Could not save tasks:', e);
-  }
-  
-  // Refresh the save button text
-  const saveBtn = document.getElementById('saveTaskBtn');
-  if (saveBtn) {
-    saveBtn.textContent = savedTasks.includes(taskId) ? '取消收藏' : '收藏任務';
+    const isCurrentlySaved = savedTasks.includes(taskId);
+    
+    if (isCurrentlySaved) {
+      // Unsave the task
+      const response = await fetch(`/api/saved-tasks?user_id=${currentUser.id}&task_id=${taskId}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        const index = savedTasks.indexOf(taskId);
+        if (index > -1) {
+          savedTasks.splice(index, 1);
+        }
+        showNotification('已取消收藏', 'info');
+      } else {
+        const error = await response.json();
+        showNotification('取消收藏失敗：' + (error.error || '網絡錯誤'), 'error');
+        return;
+      }
+    } else {
+      // Save the task
+      const response = await fetch('/api/saved-tasks', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: currentUser.id,
+          task_id: taskId
+        })
+      });
+      
+      if (response.ok) {
+        savedTasks.push(taskId);
+        showNotification('已收藏任務', 'success');
+      } else {
+        const error = await response.json();
+        showNotification('收藏失敗：' + (error.error || '網絡錯誤'), 'error');
+        return;
+      }
+    }
+    
+    // Update localStorage as backup
+    try {
+      localStorage.setItem('savedTasks', JSON.stringify(savedTasks));
+    } catch (e) {
+      console.log('Could not save tasks to localStorage:', e);
+    }
+    
+    // Refresh the save button text
+    const saveBtn = document.getElementById('saveTaskBtn');
+    if (saveBtn) {
+      saveBtn.textContent = savedTasks.includes(taskId) ? '取消收藏' : '收藏任務';
+    }
+    
+  } catch (error) {
+    console.error('Error toggling save task:', error);
+    showNotification('操作失敗：網絡錯誤', 'error');
   }
 }
 
