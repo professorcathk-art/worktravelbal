@@ -180,41 +180,129 @@ module.exports = async (req, res) => {
       });
     }
   } else if (req.method === 'PATCH') {
-    // Update user availability status
+    // Update user profile information
     try {
-      const { user_id, availability_status } = req.body;
+      const { user_id, availability_status, name, location, hourlyRate, avatar, companySize, industry, phone, wechat, line, businessLicense } = req.body;
       
-      if (!user_id || !availability_status) {
-        return res.status(400).json({ error: 'user_id and availability_status are required' });
+      if (!user_id) {
+        return res.status(400).json({ error: 'user_id is required' });
       }
 
-      if (!['available', 'busy'].includes(availability_status)) {
-        return res.status(400).json({ error: 'availability_status must be "available" or "busy"' });
+      console.log('Updating user profile for user:', user_id, 'with data:', { availability_status, name, location, hourlyRate, avatar });
+
+      // Update user basic information
+      if (name || location || phone || wechat || line || businessLicense) {
+        const userUpdateFields = [];
+        const userUpdateValues = [];
+        let paramIndex = 1;
+
+        if (name) {
+          userUpdateFields.push(`name = $${paramIndex++}`);
+          userUpdateValues.push(name);
+        }
+        if (location) {
+          userUpdateFields.push(`location = $${paramIndex++}`);
+          userUpdateValues.push(location);
+        }
+        if (phone) {
+          userUpdateFields.push(`phone = $${paramIndex++}`);
+          userUpdateValues.push(phone);
+        }
+        if (wechat) {
+          userUpdateFields.push(`wechat = $${paramIndex++}`);
+          userUpdateValues.push(wechat);
+        }
+        if (line) {
+          userUpdateFields.push(`line = $${paramIndex++}`);
+          userUpdateValues.push(line);
+        }
+        if (businessLicense) {
+          userUpdateFields.push(`business_license_url = $${paramIndex++}`);
+          userUpdateValues.push('uploaded'); // Placeholder for now
+        }
+
+        if (userUpdateFields.length > 0) {
+          userUpdateValues.push(user_id);
+          await pool.query(`
+            UPDATE users 
+            SET ${userUpdateFields.join(', ')}, updated_at = NOW()
+            WHERE id = $${paramIndex}
+          `, userUpdateValues);
+        }
       }
 
-      console.log('Updating availability status for user:', user_id, 'to:', availability_status);
+      // Update expert profile information
+      if (availability_status || hourlyRate || avatar) {
+        const expertUpdateFields = [];
+        const expertUpdateValues = [];
+        let paramIndex = 1;
 
-      // Update or insert expert profile with availability status
-      const result = await pool.query(`
-        INSERT INTO expert_profiles (user_id, availability_status, updated_at)
-        VALUES ($1, $2, NOW())
-        ON CONFLICT (user_id) 
-        DO UPDATE SET 
-          availability_status = $2,
-          updated_at = NOW()
-        RETURNING *
-      `, [user_id, availability_status]);
+        if (availability_status) {
+          if (!['available', 'busy'].includes(availability_status)) {
+            return res.status(400).json({ error: 'availability_status must be "available" or "busy"' });
+          }
+          expertUpdateFields.push(`availability_status = $${paramIndex++}`);
+          expertUpdateValues.push(availability_status);
+        }
+        if (hourlyRate) {
+          expertUpdateFields.push(`hourly_rate = $${paramIndex++}`);
+          expertUpdateValues.push(hourlyRate);
+        }
+        if (avatar) {
+          expertUpdateFields.push(`avatar_url = $${paramIndex++}`);
+          expertUpdateValues.push('uploaded'); // Placeholder for now
+        }
 
-      console.log('Availability status updated successfully');
+        if (expertUpdateFields.length > 0) {
+          expertUpdateValues.push(user_id);
+          await pool.query(`
+            INSERT INTO expert_profiles (user_id, ${expertUpdateFields.map(field => field.split(' = ')[0]).join(', ')}, updated_at)
+            VALUES ($${paramIndex}, ${expertUpdateFields.map((_, i) => `$${i + 1}`).join(', ')}, NOW())
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+              ${expertUpdateFields.join(', ')},
+              updated_at = NOW()
+          `, expertUpdateValues);
+        }
+      }
+
+      // Update client profile information
+      if (companySize || industry) {
+        const clientUpdateFields = [];
+        const clientUpdateValues = [];
+        let paramIndex = 1;
+
+        if (companySize) {
+          clientUpdateFields.push(`company_size = $${paramIndex++}`);
+          clientUpdateValues.push(companySize);
+        }
+        if (industry) {
+          clientUpdateFields.push(`industry = $${paramIndex++}`);
+          clientUpdateValues.push(industry);
+        }
+
+        if (clientUpdateFields.length > 0) {
+          clientUpdateValues.push(user_id);
+          await pool.query(`
+            INSERT INTO client_profiles (user_id, ${clientUpdateFields.map(field => field.split(' = ')[0]).join(', ')}, updated_at)
+            VALUES ($${paramIndex}, ${clientUpdateFields.map((_, i) => `$${i + 1}`).join(', ')}, NOW())
+            ON CONFLICT (user_id) 
+            DO UPDATE SET 
+              ${clientUpdateFields.join(', ')},
+              updated_at = NOW()
+          `, clientUpdateValues);
+        }
+      }
+
+      console.log('User profile updated successfully');
       res.status(200).json({
-        message: 'Availability status updated successfully',
-        availability_status: availability_status
+        message: 'User profile updated successfully'
       });
 
     } catch (error) {
-      console.error('Error updating availability status:', error);
+      console.error('Error updating user profile:', error);
       res.status(500).json({ 
-        error: 'Failed to update availability status',
+        error: 'Failed to update user profile',
         details: error.message
       });
     }

@@ -2625,6 +2625,11 @@ async function toggleSaveTask(taskId) {
       saveBtn.textContent = savedTasks.includes(taskId) ? '取消收藏' : '收藏任務';
     }
     
+    // Refresh the expert portal if it's currently displayed
+    if (currentUser.type === 'expert' && document.getElementById('portalContent')) {
+      populateExpertPortal(document.getElementById('portalContent'));
+    }
+    
   } catch (error) {
     console.error('Error toggling save task:', error);
     showNotification('操作失敗：網絡錯誤', 'error');
@@ -2690,10 +2695,10 @@ async function populateExpertPortal(content) {
           <h4>工作狀態</h4>
           <div class="status-toggle">
             <label class="toggle-switch">
-              <input type="checkbox" id="availabilityToggle" ${currentUser.availability_status === 'available' ? 'checked' : ''}>
+              <input type="checkbox" id="availabilityToggle" ${currentUser.availability_status === 'busy' ? 'checked' : ''}>
               <span class="toggle-slider"></span>
             </label>
-            <span id="statusText" class="status-text">${currentUser.availability_status === 'available' ? '可接任務' : '暫時約滿'}</span>
+            <span id="statusText" class="status-text">${currentUser.availability_status === 'busy' ? '暫時約滿' : '可接任務'}</span>
           </div>
         </div>
         
@@ -2800,10 +2805,6 @@ async function populateExpertPortal(content) {
               <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-success);">${userApplications.length}</div>
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">總申請數</div>
             </div>
-            <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-1); border-radius: var(--radius-base);">
-              <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-info);">${currentUser.completedProjects || 0}</div>
-              <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">完成項目</div>
-            </div>
             <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-6); border-radius: var(--radius-base);">
               <div style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-warning);">${currentUser.rating || 0}</div>
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">平均評分</div>
@@ -2886,7 +2887,7 @@ function populateClientPortal(content) {
               <div style="font-size: 2rem; margin-bottom: var(--space-12);">📊</div>
               <h4>項目統計</h4>
               <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">追蹤項目進度和成效</p>
-              <button class="btn btn--primary btn--sm" style="margin-top: var(--space-12);">即將開放</button>
+              <button class="btn btn--primary btn--sm" style="margin-top: var(--space-12);" onclick="openProjectStatsModal()">查看統計</button>
             </div>
           </div>
         </div>
@@ -3600,17 +3601,40 @@ async function handleCorporateProfileUpdate(event) {
   }
   
   try {
-    // Update current user data
-    Object.assign(currentUser, formData);
+    // Update via API
+    const response = await fetch('/api/users', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: currentUser.id,
+        name: formData.name,
+        companySize: formData.companySize,
+        industry: formData.industry,
+        phone: formData.phone,
+        wechat: formData.wechat,
+        line: formData.line,
+        businessLicense: formData.businessLicense
+      })
+    });
     
-    // Save to localStorage
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    
-    // Update the portal display
-    populateClientPortal(document.getElementById('portalContent'));
-    
-    closeModal('corporateProfileModal');
-    showNotification('企業資料已成功更新', 'success');
+    if (response.ok) {
+      // Update current user data
+      Object.assign(currentUser, formData);
+      
+      // Save to localStorage
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      
+      // Update the portal display
+      populateClientPortal(document.getElementById('portalContent'));
+      
+      closeModal('corporateProfileModal');
+      showNotification('企業資料已成功更新', 'success');
+    } else {
+      const error = await response.json();
+      showNotification('更新企業資料失敗：' + (error.error || '網絡錯誤'), 'error');
+    }
     
   } catch (error) {
     console.error('Error updating corporate profile:', error);
@@ -3637,17 +3661,37 @@ async function handleExpertProfileUpdate(event) {
   }
   
   try {
-    // Update current user data
-    Object.assign(currentUser, formData);
+    // Update via API
+    const response = await fetch('/api/users', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: currentUser.id,
+        name: formData.name,
+        location: formData.location,
+        hourlyRate: formData.hourlyRate,
+        avatar: formData.avatar
+      })
+    });
     
-    // Save to localStorage
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    
-    // Update the portal display
-    populateExpertPortal(document.getElementById('portalContent'));
-    
-    closeModal('expertProfileModal');
-    showNotification('個人資料已成功更新', 'success');
+    if (response.ok) {
+      // Update current user data
+      Object.assign(currentUser, formData);
+      
+      // Save to localStorage
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      
+      // Update the portal display
+      populateExpertPortal(document.getElementById('portalContent'));
+      
+      closeModal('expertProfileModal');
+      showNotification('個人資料已成功更新', 'success');
+    } else {
+      const error = await response.json();
+      showNotification('更新個人資料失敗：' + (error.error || '網絡錯誤'), 'error');
+    }
     
   } catch (error) {
     console.error('Error updating expert profile:', error);
@@ -3656,32 +3700,33 @@ async function handleExpertProfileUpdate(event) {
 }
 
 // Expert availability toggle
-async function toggleExpertAvailability(isAvailable) {
+async function toggleExpertAvailability(isBusy) {
   if (!currentUser || currentUser.type !== 'expert') return;
   
   try {
-    const response = await fetch(`/api/users?id=${currentUser.id}`, {
+    const response = await fetch('/api/users', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        availability_status: isAvailable ? 'available' : 'busy'
+        user_id: currentUser.id,
+        availability_status: isBusy ? 'busy' : 'available'
       })
     });
     
     if (response.ok) {
       // Update current user
-      currentUser.availability_status = isAvailable ? 'available' : 'busy';
+      currentUser.availability_status = isBusy ? 'busy' : 'available';
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
       
       // Update status text
       const statusText = document.getElementById('statusText');
       if (statusText) {
-        statusText.textContent = isAvailable ? '可接任務' : '暫時約滿';
+        statusText.textContent = isBusy ? '暫時約滿' : '可接任務';
       }
       
-      showNotification(`狀態已更新為：${isAvailable ? '可接任務' : '暫時約滿'}`, 'success');
+      showNotification(`狀態已更新為：${isBusy ? '暫時約滿' : '可接任務'}`, 'success');
       
       // Refresh expert marketplace if it's currently displayed
       if (document.getElementById('expertMarketplace') && !document.getElementById('expertMarketplace').classList.contains('hidden')) {
@@ -3694,6 +3739,41 @@ async function toggleExpertAvailability(isAvailable) {
   } catch (error) {
     console.error('Error toggling availability:', error);
     showNotification('更新狀態時發生錯誤', 'error');
+  }
+}
+
+// Project Statistics functionality
+async function openProjectStatsModal() {
+  if (!currentUser || currentUser.type !== 'client') {
+    showNotification('只有企業用戶才能查看項目統計', 'error');
+    return;
+  }
+  
+  try {
+    // Load project statistics
+    const response = await fetch(`/api/tasks?client_id=${currentUser.id}&all=true`);
+    if (response.ok) {
+      const tasks = await response.json();
+      
+      // Calculate statistics
+      const totalProjects = tasks.length;
+      const activeProjects = tasks.filter(task => task.status === 'in_progress').length;
+      const completedProjects = tasks.filter(task => task.status === 'completed').length;
+      const totalApplications = tasks.reduce((sum, task) => sum + (task.applications_count || 0), 0);
+      
+      // Update the modal content
+      document.getElementById('totalProjects').textContent = totalProjects;
+      document.getElementById('activeProjects').textContent = activeProjects;
+      document.getElementById('completedProjects').textContent = completedProjects;
+      document.getElementById('totalApplications').textContent = totalApplications;
+      
+      openModal('projectStatsModal');
+    } else {
+      showNotification('載入項目統計失敗', 'error');
+    }
+  } catch (error) {
+    console.error('Error loading project statistics:', error);
+    showNotification('載入項目統計時發生錯誤', 'error');
   }
 }
 
@@ -3817,6 +3897,7 @@ window.loadAllTasks = loadAllTasks;
 window.loadOpenTasks = loadOpenTasks;
 window.openCorporateProfileModal = openCorporateProfileModal;
 window.handleCorporateProfileUpdate = handleCorporateProfileUpdate;
+window.openProjectStatsModal = openProjectStatsModal;
 window.openExpertProfileModal = openExpertProfileModal;
 window.handleExpertProfileUpdate = handleExpertProfileUpdate;
 window.toggleExpertAvailability = toggleExpertAvailability;

@@ -785,6 +785,42 @@
         </div>
     </div>
 
+    <!-- Project Statistics Modal -->
+    <div class="modal hidden" id="projectStatsModal">
+        <div class="modal-backdrop" onclick="closeModal('projectStatsModal')"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>項目統計</h3>
+                <button class="modal-close" onclick="closeModal('projectStatsModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="projectStatsContent">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-16); margin-bottom: var(--space-24);">
+                        <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-1); border-radius: var(--radius-base);">
+                            <div id="totalProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary);">0</div>
+                            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">總項目數</div>
+                        </div>
+                        <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-2); border-radius: var(--radius-base);">
+                            <div id="activeProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-success);">0</div>
+                            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">進行中項目</div>
+                        </div>
+                        <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-3); border-radius: var(--radius-base);">
+                            <div id="completedProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-info);">0</div>
+                            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">已完成項目</div>
+                        </div>
+                        <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-4); border-radius: var(--radius-base);">
+                            <div id="totalApplications" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-warning);">0</div>
+                            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">總申請數</div>
+                        </div>
+                    </div>
+                    <div style="text-align: center; color: var(--color-text-secondary);">
+                        <p>更多詳細統計功能將在後續版本中提供</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Message Modal -->
     <div class="modal hidden" id="messageModal">
         <div class="modal-backdrop" onclick="closeModal('messageModal')"></div>
