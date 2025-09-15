@@ -901,11 +901,13 @@ async function handleInterviewScheduling() {
 }
 
 async function editTask(taskId) {
+  console.log('editTask called with taskId:', taskId);
   try {
     // Fetch the task details from the API
     const response = await fetch(`/api/tasks?id=${taskId}`);
     if (response.ok) {
       const tasks = await response.json();
+      console.log('Loaded task for editing:', tasks);
       if (tasks.length > 0) {
         const task = tasks[0];
         // Open the task creation modal in edit mode
@@ -914,6 +916,7 @@ async function editTask(taskId) {
         showNotification('找不到任務詳情', 'error');
       }
     } else {
+      console.error('Failed to load task details:', response.status);
       showNotification('載入任務詳情失敗', 'error');
     }
   } catch (error) {
@@ -3530,6 +3533,9 @@ async function viewTaskDetails(taskId) {
 
 // Corporate Profile Management
 function openCorporateProfileModal() {
+  console.log('openCorporateProfileModal called');
+  console.log('currentUser:', currentUser);
+  
   // Populate the form with current user data
   if (currentUser) {
     document.getElementById('corporateName').value = currentUser.name || '';
@@ -3540,6 +3546,7 @@ function openCorporateProfileModal() {
     document.getElementById('corporateLine').value = currentUser.line || '';
   }
   
+  console.log('Opening corporate profile modal');
   openModal('corporateProfileModal');
 }
 
@@ -3744,16 +3751,21 @@ async function toggleExpertAvailability(isBusy) {
 
 // Project Statistics functionality
 async function openProjectStatsModal() {
+  console.log('openProjectStatsModal called');
+  console.log('currentUser:', currentUser);
+  
   if (!currentUser || currentUser.type !== 'client') {
     showNotification('只有企業用戶才能查看項目統計', 'error');
     return;
   }
   
   try {
+    console.log('Loading project statistics for client:', currentUser.id);
     // Load project statistics
     const response = await fetch(`/api/tasks?client_id=${currentUser.id}&all=true`);
     if (response.ok) {
       const tasks = await response.json();
+      console.log('Loaded tasks:', tasks);
       
       // Calculate statistics
       const totalProjects = tasks.length;
@@ -3761,14 +3773,18 @@ async function openProjectStatsModal() {
       const completedProjects = tasks.filter(task => task.status === 'completed').length;
       const totalApplications = tasks.reduce((sum, task) => sum + (task.applications_count || 0), 0);
       
+      console.log('Statistics:', { totalProjects, activeProjects, completedProjects, totalApplications });
+      
       // Update the modal content
       document.getElementById('totalProjects').textContent = totalProjects;
       document.getElementById('activeProjects').textContent = activeProjects;
       document.getElementById('completedProjects').textContent = completedProjects;
       document.getElementById('totalApplications').textContent = totalApplications;
       
+      console.log('Opening project stats modal');
       openModal('projectStatsModal');
     } else {
+      console.error('Failed to load project statistics:', response.status);
       showNotification('載入項目統計失敗', 'error');
     }
   } catch (error) {
