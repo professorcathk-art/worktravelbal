@@ -1123,6 +1123,54 @@ function setupFormHandlers() {
     });
   }
 
+  // Corporate profile form
+  const corporateProfileForm = document.getElementById('corporateProfileForm');
+  if (corporateProfileForm) {
+    corporateProfileForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      handleCorporateProfileUpdate(e);
+    });
+  }
+
+  // Expert profile form
+  const expertProfileForm = document.getElementById('expertProfileForm');
+  if (expertProfileForm) {
+    expertProfileForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      handleExpertProfileUpdate(e);
+    });
+  }
+
+  // Expert skills input
+  const expertSkillInput = document.getElementById('expertSkillInput');
+  if (expertSkillInput) {
+    expertSkillInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const skill = this.value.trim();
+        if (skill) {
+          addExpertSkill(skill);
+          this.value = '';
+        }
+      }
+    });
+  }
+
+  // Expert languages input
+  const expertLanguageInput = document.getElementById('expertLanguageInput');
+  if (expertLanguageInput) {
+    expertLanguageInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const language = this.value.trim();
+        if (language) {
+          addExpertLanguage(language);
+          this.value = '';
+        }
+      }
+    });
+  }
+
   // Type selection buttons
   document.querySelectorAll('.type-btn').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -2455,6 +2503,21 @@ function populatePortal() {
   }
 }
 
+function calculateExpertProfileCompletion(user) {
+  const fields = [
+    user.name,
+    user.email,
+    user.location,
+    user.hourlyRate,
+    user.skills && user.skills.length > 0,
+    user.languages && user.languages.length > 0,
+    user.avatar
+  ];
+  
+  const completedFields = fields.filter(field => field && field !== false).length;
+  return Math.round((completedFields / fields.length) * 100);
+}
+
 async function populateExpertPortal(content) {
   // Load real data from APIs with error handling
   let userApplications = [];
@@ -2470,15 +2533,17 @@ async function populateExpertPortal(content) {
     // Continue with empty arrays if API calls fail
   }
   
+  const profileComplete = calculateExpertProfileCompletion(currentUser);
+  
   content.innerHTML = `
     <div class="portal-grid">
       <div class="portal-sidebar">
         <div class="profile-completion">
           <h4>檔案完整度</h4>
           <div class="completion-bar">
-            <div class="completion-fill" style="width: ${currentUser.profileComplete}%"></div>
+            <div class="completion-fill" style="width: ${profileComplete}%"></div>
           </div>
-          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">${currentUser.profileComplete}% 完成</div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">${profileComplete}% 完成</div>
         </div>
         
         <div class="availability-status">
@@ -2498,7 +2563,9 @@ async function populateExpertPortal(content) {
           <div style="margin-bottom: var(--space-8);"><strong>電郵:</strong> ${currentUser.email}</div>
           <div style="margin-bottom: var(--space-8);"><strong>位置:</strong> ${currentUser.location || '未設定'}</div>
           <div style="margin-bottom: var(--space-8);"><strong>時薪:</strong> ${currentUser.hourlyRate || '未設定'}</div>
+          <div style="margin-bottom: var(--space-8);"><strong>頭像:</strong> ${currentUser.avatar ? '✅ 已上傳' : '❌ 未上傳'}</div>
           <div style="margin-bottom: var(--space-8);"><strong>驗證狀態:</strong> ${currentUser.verified ? '✅ 已驗證' : '⏳ 待驗證'}</div>
+          <button class="btn btn--outline btn--sm" onclick="openExpertProfileModal()" style="margin-top: var(--space-12);">編輯個人資料</button>
         </div>
         
         ${currentUser.skills && currentUser.skills.length > 0 ? `
@@ -2616,16 +2683,33 @@ async function populateExpertPortal(content) {
   });
 }
 
+function calculateCorporateProfileCompletion(user) {
+  const fields = [
+    user.name,
+    user.companySize,
+    user.industry,
+    user.phone,
+    user.wechat,
+    user.line,
+    user.businessLicense
+  ];
+  
+  const completedFields = fields.filter(field => field && field.trim() !== '').length;
+  return Math.round((completedFields / fields.length) * 100);
+}
+
 function populateClientPortal(content) {
+  const profileComplete = calculateCorporateProfileCompletion(currentUser);
+  
   content.innerHTML = `
     <div class="portal-grid">
       <div class="portal-sidebar">
         <div class="profile-completion">
           <h4>企業資料完整度</h4>
           <div class="completion-bar">
-            <div class="completion-fill" style="width: ${currentUser.profileComplete}%"></div>
+            <div class="completion-fill" style="width: ${profileComplete}%"></div>
           </div>
-          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">${currentUser.profileComplete}% 完成</div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">${profileComplete}% 完成</div>
         </div>
         
         <div class="profile-section">
@@ -2633,7 +2717,12 @@ function populateClientPortal(content) {
           <div style="margin-bottom: var(--space-8);"><strong>企業:</strong> ${currentUser.name}</div>
           <div style="margin-bottom: var(--space-8);"><strong>規模:</strong> ${currentUser.companySize || '未設定'}</div>
           <div style="margin-bottom: var(--space-8);"><strong>行業:</strong> ${currentUser.industry || '未設定'}</div>
+          <div style="margin-bottom: var(--space-8);"><strong>電話:</strong> ${currentUser.phone || '未設定'}</div>
+          <div style="margin-bottom: var(--space-8);"><strong>微信:</strong> ${currentUser.wechat || '未設定'}</div>
+          <div style="margin-bottom: var(--space-8);"><strong>Line:</strong> ${currentUser.line || '未設定'}</div>
+          <div style="margin-bottom: var(--space-8);"><strong>營業執照:</strong> ${currentUser.businessLicense ? '✅ 已上傳' : '❌ 未上傳'}</div>
           <div style="margin-bottom: var(--space-8);"><strong>驗證狀態:</strong> ${currentUser.verified ? '✅ 已驗證' : '⏳ 待驗證'}</div>
+          <button class="btn btn--outline btn--sm" onclick="openCorporateProfileModal()" style="margin-top: var(--space-12);">編輯企業資料</button>
         </div>
       </div>
       
@@ -3283,6 +3372,191 @@ async function viewTaskDetails(taskId) {
   }
 }
 
+// Corporate Profile Management
+function openCorporateProfileModal() {
+  // Populate the form with current user data
+  if (currentUser) {
+    document.getElementById('corporateName').value = currentUser.name || '';
+    document.getElementById('corporateSize').value = currentUser.companySize || '';
+    document.getElementById('corporateIndustry').value = currentUser.industry || '';
+    document.getElementById('corporatePhone').value = currentUser.phone || '';
+    document.getElementById('corporateWechat').value = currentUser.wechat || '';
+    document.getElementById('corporateLine').value = currentUser.line || '';
+  }
+  
+  openModal('corporateProfileModal');
+}
+
+// Expert Profile Management
+function openExpertProfileModal() {
+  // Populate the form with current user data
+  if (currentUser) {
+    document.getElementById('expertName').value = currentUser.name || '';
+    document.getElementById('expertLocation').value = currentUser.location || '';
+    document.getElementById('expertHourlyRate').value = currentUser.hourlyRate || '';
+    
+    // Populate skills
+    const skillsContainer = document.getElementById('expertSkillsContainer');
+    skillsContainer.innerHTML = '';
+    if (currentUser.skills && currentUser.skills.length > 0) {
+      currentUser.skills.forEach(skill => {
+        const skillTag = document.createElement('span');
+        skillTag.className = 'skill-tag';
+        skillTag.innerHTML = `${skill} <span class="remove-skill" onclick="removeExpertSkill('${skill}')">&times;</span>`;
+        skillsContainer.appendChild(skillTag);
+      });
+    }
+    
+    // Populate languages
+    const languagesContainer = document.getElementById('expertLanguagesContainer');
+    languagesContainer.innerHTML = '';
+    if (currentUser.languages && currentUser.languages.length > 0) {
+      currentUser.languages.forEach(language => {
+        const languageTag = document.createElement('span');
+        languageTag.className = 'skill-tag';
+        languageTag.innerHTML = `${language} <span class="remove-skill" onclick="removeExpertLanguage('${language}')">&times;</span>`;
+        languagesContainer.appendChild(languageTag);
+      });
+    }
+  }
+  
+  openModal('expertProfileModal');
+}
+
+async function handleCorporateProfileUpdate(event) {
+  event.preventDefault();
+  
+  const formData = {
+    name: document.getElementById('corporateName').value,
+    companySize: document.getElementById('corporateSize').value,
+    industry: document.getElementById('corporateIndustry').value,
+    phone: document.getElementById('corporatePhone').value,
+    wechat: document.getElementById('corporateWechat').value,
+    line: document.getElementById('corporateLine').value
+  };
+  
+  // Handle file upload for business license
+  const licenseFile = document.getElementById('corporateLicense').files[0];
+  if (licenseFile) {
+    // For now, we'll just mark it as uploaded
+    // In a real implementation, you'd upload to a file storage service
+    formData.businessLicense = true;
+    showNotification('營業執照上傳功能將在後續版本中實現', 'info');
+  }
+  
+  try {
+    // Update current user data
+    Object.assign(currentUser, formData);
+    
+    // Save to localStorage
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    // Update the portal display
+    populateClientPortal(document.getElementById('portalContent'));
+    
+    closeModal('corporateProfileModal');
+    showNotification('企業資料已成功更新', 'success');
+    
+  } catch (error) {
+    console.error('Error updating corporate profile:', error);
+    showNotification('更新企業資料時發生錯誤', 'error');
+  }
+}
+
+async function handleExpertProfileUpdate(event) {
+  event.preventDefault();
+  
+  const formData = {
+    name: document.getElementById('expertName').value,
+    location: document.getElementById('expertLocation').value,
+    hourlyRate: document.getElementById('expertHourlyRate').value
+  };
+  
+  // Handle file upload for avatar
+  const avatarFile = document.getElementById('expertAvatar').files[0];
+  if (avatarFile) {
+    // For now, we'll just mark it as uploaded
+    // In a real implementation, you'd upload to a file storage service
+    formData.avatar = true;
+    showNotification('頭像上傳功能將在後續版本中實現', 'info');
+  }
+  
+  try {
+    // Update current user data
+    Object.assign(currentUser, formData);
+    
+    // Save to localStorage
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    // Update the portal display
+    populateExpertPortal(document.getElementById('portalContent'));
+    
+    closeModal('expertProfileModal');
+    showNotification('個人資料已成功更新', 'success');
+    
+  } catch (error) {
+    console.error('Error updating expert profile:', error);
+    showNotification('更新個人資料時發生錯誤', 'error');
+  }
+}
+
+// Expert skills and languages management
+function addExpertSkill(skill) {
+  if (!currentUser.skills) currentUser.skills = [];
+  if (!currentUser.skills.includes(skill)) {
+    currentUser.skills.push(skill);
+    updateExpertSkillsDisplay();
+  }
+}
+
+function removeExpertSkill(skill) {
+  if (currentUser.skills) {
+    currentUser.skills = currentUser.skills.filter(s => s !== skill);
+    updateExpertSkillsDisplay();
+  }
+}
+
+function addExpertLanguage(language) {
+  if (!currentUser.languages) currentUser.languages = [];
+  if (!currentUser.languages.includes(language)) {
+    currentUser.languages.push(language);
+    updateExpertLanguagesDisplay();
+  }
+}
+
+function removeExpertLanguage(language) {
+  if (currentUser.languages) {
+    currentUser.languages = currentUser.languages.filter(l => l !== language);
+    updateExpertLanguagesDisplay();
+  }
+}
+
+function updateExpertSkillsDisplay() {
+  const skillsContainer = document.getElementById('expertSkillsContainer');
+  skillsContainer.innerHTML = '';
+  if (currentUser.skills && currentUser.skills.length > 0) {
+    currentUser.skills.forEach(skill => {
+      const skillTag = document.createElement('span');
+      skillTag.className = 'skill-tag';
+      skillTag.innerHTML = `${skill} <span class="remove-skill" onclick="removeExpertSkill('${skill}')">&times;</span>`;
+      skillsContainer.appendChild(skillTag);
+    });
+  }
+}
+
+function updateExpertLanguagesDisplay() {
+  const languagesContainer = document.getElementById('expertLanguagesContainer');
+  languagesContainer.innerHTML = '';
+  if (currentUser.languages && currentUser.languages.length > 0) {
+    currentUser.languages.forEach(language => {
+      const languageTag = document.createElement('span');
+      languageTag.className = 'skill-tag';
+      languageTag.innerHTML = `${language} <span class="remove-skill" onclick="removeExpertLanguage('${language}')">&times;</span>`;
+      languagesContainer.appendChild(languageTag);
+    });
+  }
+}
+
 // Global functions for admin
 window.populateAdminPortal = populateAdminPortal;
 window.loadUnverifiedUsers = loadUnverifiedUsers;
@@ -3294,3 +3568,11 @@ window.verifyUser = verifyUser;
 window.unverifyUser = unverifyUser;
 window.loadAllTasks = loadAllTasks;
 window.loadOpenTasks = loadOpenTasks;
+window.openCorporateProfileModal = openCorporateProfileModal;
+window.handleCorporateProfileUpdate = handleCorporateProfileUpdate;
+window.openExpertProfileModal = openExpertProfileModal;
+window.handleExpertProfileUpdate = handleExpertProfileUpdate;
+window.addExpertSkill = addExpertSkill;
+window.removeExpertSkill = removeExpertSkill;
+window.addExpertLanguage = addExpertLanguage;
+window.removeExpertLanguage = removeExpertLanguage;

@@ -693,6 +693,122 @@
         </div>
     </div>
 
+    <!-- Corporate Profile Edit Modal -->
+    <div class="modal hidden" id="corporateProfileModal">
+        <div class="modal-backdrop" onclick="closeModal('corporateProfileModal')"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>編輯企業資料</h3>
+                <button class="modal-close" onclick="closeModal('corporateProfileModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="corporateProfileForm">
+                    <div class="form-group">
+                        <label class="form-label">企業名稱</label>
+                        <input type="text" class="form-control" id="corporateName" value="${currentUser?.name || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">企業規模</label>
+                        <select class="form-control" id="corporateSize">
+                            <option value="">請選擇</option>
+                            <option value="1-10人">1-10人</option>
+                            <option value="11-50人">11-50人</option>
+                            <option value="51-200人">51-200人</option>
+                            <option value="201-500人">201-500人</option>
+                            <option value="500人以上">500人以上</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">行業</label>
+                        <select class="form-control" id="corporateIndustry">
+                            <option value="">請選擇</option>
+                            <option value="科技/軟體">科技/軟體</option>
+                            <option value="金融/保險">金融/保險</option>
+                            <option value="教育/培訓">教育/培訓</option>
+                            <option value="醫療/健康">醫療/健康</option>
+                            <option value="電商/零售">電商/零售</option>
+                            <option value="製造業">製造業</option>
+                            <option value="建築/房地產">建築/房地產</option>
+                            <option value="媒體/廣告">媒體/廣告</option>
+                            <option value="其他">其他</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">聯絡電話</label>
+                        <input type="tel" class="form-control" id="corporatePhone" placeholder="+886-2-1234-5678">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">微信 ID</label>
+                        <input type="text" class="form-control" id="corporateWechat" placeholder="wechat_id">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Line ID</label>
+                        <input type="text" class="form-control" id="corporateLine" placeholder="line_id">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">企業營業執照</label>
+                        <input type="file" class="form-control" id="corporateLicense" accept="image/*,.pdf">
+                        <small class="form-text">支援 JPG, PNG, PDF 格式，檔案大小不超過 5MB</small>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn btn--outline" onclick="closeModal('corporateProfileModal')">取消</button>
+                        <button type="submit" class="btn btn--primary">儲存變更</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Expert Profile Edit Modal -->
+    <div class="modal hidden" id="expertProfileModal">
+        <div class="modal-backdrop" onclick="closeModal('expertProfileModal')"></div>
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>編輯個人資料</h3>
+                <button class="modal-close" onclick="closeModal('expertProfileModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="expertProfileForm">
+                    <div class="form-group">
+                        <label class="form-label">姓名</label>
+                        <input type="text" class="form-control" id="expertName" value="${currentUser?.name || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">位置</label>
+                        <input type="text" class="form-control" id="expertLocation" placeholder="台北, 台灣">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">時薪</label>
+                        <input type="text" class="form-control" id="expertHourlyRate" placeholder="$40-60">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">個人頭像</label>
+                        <input type="file" class="form-control" id="expertAvatar" accept="image/*">
+                        <small class="form-text">支援 JPG, PNG 格式，檔案大小不超過 2MB</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">技能</label>
+                        <div id="expertSkillsContainer" class="skills-container">
+                            <!-- Skills will be populated here -->
+                        </div>
+                        <input type="text" class="form-control" id="expertSkillInput" placeholder="輸入技能後按 Enter">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">語言</label>
+                        <div id="expertLanguagesContainer" class="skills-container">
+                            <!-- Languages will be populated here -->
+                        </div>
+                        <input type="text" class="form-control" id="expertLanguageInput" placeholder="輸入語言後按 Enter">
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn btn--outline" onclick="closeModal('expertProfileModal')">取消</button>
+                        <button type="submit" class="btn btn--primary">儲存變更</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>
