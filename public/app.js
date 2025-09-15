@@ -3197,7 +3197,7 @@ async function delistTask(taskId) {
   }
   
   try {
-    const response = await fetch(`/api/tasks/${taskId}`, {
+    const response = await fetch(`/api/tasks?id=${taskId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -3233,7 +3233,7 @@ async function reactivateTask(taskId) {
   }
   
   try {
-    const response = await fetch(`/api/tasks/${taskId}`, {
+    const response = await fetch(`/api/tasks?id=${taskId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -3263,12 +3263,23 @@ async function reactivateTask(taskId) {
   }
 }
 
-function viewTaskDetails(taskId) {
-  // Find the task in the current task list and show its details
-  const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
-  if (taskCard) {
-    // Extract task data from the card or fetch it
-    showTaskDetails(taskId);
+async function viewTaskDetails(taskId) {
+  try {
+    // Fetch the task details from the API
+    const response = await fetch(`/api/tasks?id=${taskId}`);
+    if (response.ok) {
+      const tasks = await response.json();
+      if (tasks.length > 0) {
+        showTaskDetails(tasks[0]);
+      } else {
+        showNotification('找不到任務詳情', 'error');
+      }
+    } else {
+      showNotification('載入任務詳情失敗', 'error');
+    }
+  } catch (error) {
+    console.error('Error loading task details:', error);
+    showNotification('載入任務詳情時發生錯誤', 'error');
   }
 }
 
