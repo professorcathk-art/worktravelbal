@@ -35,7 +35,7 @@ const platformData = {
       name: "張美玲",
       title: "UI/UX 設計師",
       avatar: "👩‍🎨",
-      location: "清邁, 泰國",
+      location: "洛杉磯, 美國",
       timezone: "GMT+7",
       rating: 4.8,
       reviews: 94,
@@ -44,7 +44,7 @@ const platformData = {
       languages: ["中文", "英文", "泰文"],
       hourlyRate: "$35-50",
       completedProjects: 76,
-      description: "專業UI/UX設計師，致力於創造直觀易用的數位產品。在清邁的共享工作空間工作，享受低成本高品質的生活。",
+      description: "專業UI/UX設計師，致力於創造直觀易用的數位產品。在洛杉磯的共享工作空間工作，享受創意與科技的完美結合。",
       availability: "每週25小時",
       verified: true
     },
@@ -266,9 +266,9 @@ const platformData = {
   ],
 
   statistics: {
-    totalExperts: 1247,
-    activeProjects: 356,
-    completedTasks: 4829,
+    totalExperts: 300,
+    activeProjects: 100,
+    completedTasks: 500,
     averageEarnings: "$2340/月",
     nomadDestinations: 89
   }
@@ -907,12 +907,6 @@ function setupEventListeners() {
           case '任務':
             showSection('tasks');
             break;
-          case '目的地':
-            showSection('destinations');
-            break;
-          case '社群':
-            showSection('community');
-            break;
         }
       });
     }
@@ -1415,7 +1409,7 @@ async function handleRegister() {
       
       updateAuthState();
       closeModal('registerModal');
-      showNotification('註冊成功！歡迎加入數位遊牧平台。', 'success');
+      showNotification('註冊成功！歡迎加入數牧人。', 'success');
       showSection('portal');
       
     } else {
@@ -1593,7 +1587,7 @@ function populateExperts(experts = platformData.experts) {
       </div>
       <div class="expert-footer">
         <div class="expert-rate">${expert.hourlyRate}/時</div>
-        <div class="expert-status status-available">可接案</div>
+        <div class="expert-status status-busy">暫時約滿</div>
       </div>
     `;
     
@@ -1878,8 +1872,14 @@ function showTaskDetails(task) {
   `;
   
   // Add event listeners
-  document.getElementById('applyTaskBtn').addEventListener('click', () => applyToTask(task.id));
-  document.getElementById('saveTaskBtn').addEventListener('click', () => toggleSaveTask(task.id));
+  document.getElementById('applyTaskBtn').addEventListener('click', () => {
+    closeModal('taskModal');
+    applyToTask(task.id);
+  });
+  document.getElementById('saveTaskBtn').addEventListener('click', () => {
+    closeModal('taskModal');
+    toggleSaveTask(task.id);
+  });
   
   modal.classList.remove('hidden');
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>數位遊牧平台 - 邊旅遊邊工作的夢想實現</title>
+    <title>數牧人 - 邊旅遊邊工作的夢想實現</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -12,14 +12,12 @@
         <div class="container">
             <div class="nav-content">
                 <div class="logo">
-                    <h2>🌍 數位遊牧平台</h2>
+                    <h2>🌍 數牧人</h2>
                 </div>
                 <div class="nav-links">
                     <a href="#" onclick="showSection('home')" class="nav-link">首頁</a>
                     <a href="#" onclick="showSection('experts')" class="nav-link">專家</a>
                     <a href="#" onclick="showSection('tasks')" class="nav-link">任務</a>
-                    <a href="#" onclick="showSection('destinations')" class="nav-link">目的地</a>
-                    <a href="#" onclick="showSection('community')" class="nav-link">社群</a>
                     <div class="auth-buttons">
                         <button class="btn btn--outline btn--sm" onclick="openModal('login')">登入</button>
                         <button class="btn btn--primary btn--sm" onclick="openModal('register')">加入平台</button>
@@ -46,15 +44,15 @@
                             </div>
                             <div class="hero-stats">
                                 <div class="hero-stat">
-                                    <span class="stat-number" id="totalExperts">1,247</span>
+                                    <span class="stat-number" id="totalExperts">300+</span>
                                     <span class="stat-label">專家</span>
                                 </div>
                                 <div class="hero-stat">
-                                    <span class="stat-number" id="activeProjects">356</span>
+                                    <span class="stat-number" id="activeProjects">100+</span>
                                     <span class="stat-label">進行中項目</span>
                                 </div>
                                 <div class="hero-stat">
-                                    <span class="stat-number" id="completedTasks">4,829</span>
+                                    <span class="stat-number" id="completedTasks">500+</span>
                                     <span class="stat-label">完成任務</span>
                                 </div>
                             </div>
@@ -100,15 +98,6 @@
                 </div>
             </div>
 
-            <!-- Destinations Section -->
-            <div class="destinations-section">
-                <div class="container">
-                    <h2>熱門遊牧目的地</h2>
-                    <div class="destinations-grid" id="destinationsGrid">
-                        <!-- Destinations will be populated by JavaScript -->
-                    </div>
-                </div>
-            </div>
 
             <!-- Success Stories -->
             <div class="success-section">
@@ -119,7 +108,7 @@
                             <div class="story-header">
                                 <div class="story-avatar">👨‍💻</div>
                                 <div class="story-info">
-                                    <div class="story-name">陳文傑</div>
+                                    <div class="story-name">Peter Zhang</div>
                                     <div class="story-title">全端開發工程師</div>
                                 </div>
                             </div>
@@ -130,12 +119,56 @@
                             <div class="story-header">
                                 <div class="story-avatar">👩‍🎨</div>
                                 <div class="story-info">
-                                    <div class="story-name">張美玲</div>
+                                    <div class="story-name">Cecilia Liu</div>
                                     <div class="story-title">UI/UX 設計師</div>
                                 </div>
                             </div>
-                            <p>"在清邁的共享工作空間，我與來自世界各地的設計師交流，不斷提升專業技能。"</p>
-                            <div class="story-location">📍 清邁, 泰國</div>
+                            <p>"在洛杉磯的共享工作空間，我與來自世界各地的設計師交流，不斷提升專業技能。"</p>
+                            <div class="story-location">📍 洛杉磯, 美國</div>
+                        </div>
+                        <div class="story-card">
+                            <div class="story-header">
+                                <div class="story-avatar">👨‍💼</div>
+                                <div class="story-info">
+                                    <div class="story-name">Michael Chen</div>
+                                    <div class="story-title">數位行銷專家</div>
+                                </div>
+                            </div>
+                            <p>"在深圳的科技園區工作，為亞洲企業提供國際化行銷策略，幫助品牌拓展海外市場。"</p>
+                            <div class="story-location">📍 深圳, 中國</div>
+                        </div>
+                        <div class="story-card">
+                            <div class="story-header">
+                                <div class="story-avatar">👩‍💻</div>
+                                <div class="story-info">
+                                    <div class="story-name">Sarah Wang</div>
+                                    <div class="story-title">資料分析師</div>
+                                </div>
+                            </div>
+                            <p>"在紐約的金融區遠程工作，為跨國企業提供數據洞察，實現了工作與生活的完美平衡。"</p>
+                            <div class="story-location">📍 紐約, 美國</div>
+                        </div>
+                        <div class="story-card">
+                            <div class="story-header">
+                                <div class="story-avatar">👨‍🎓</div>
+                                <div class="story-info">
+                                    <div class="story-name">David Li</div>
+                                    <div class="story-title">商業顧問</div>
+                                </div>
+                            </div>
+                            <p>"在上海的商務中心為初創公司提供策略諮詢，見證了許多企業從0到1的成長歷程。"</p>
+                            <div class="story-location">📍 上海, 中國</div>
+                        </div>
+                        <div class="story-card">
+                            <div class="story-header">
+                                <div class="story-avatar">👩‍🎬</div>
+                                <div class="story-info">
+                                    <div class="story-name">Emma Zhao</div>
+                                    <div class="story-title">影片製作人</div>
+                                </div>
+                            </div>
+                            <p>"在舊金山的創意工作室工作，為全球品牌製作宣傳影片，將創意與技術完美結合。"</p>
+                            <div class="story-location">📍 舊金山, 美國</div>
                         </div>
                     </div>
                 </div>
@@ -326,7 +359,7 @@
         <div class="modal-backdrop" onclick="closeModal('registerModal')"></div>
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h3>加入數位遊牧平台</h3>
+                <h3>加入數牧人</h3>
                 <button class="modal-close" onclick="closeModal('registerModal')">&times;</button>
             </div>
             <div class="modal-body">
