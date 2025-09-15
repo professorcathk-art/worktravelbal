@@ -2105,6 +2105,53 @@ select.form-control {
   opacity: 1;
 }
 
+/* Hashtag Skills Styles */
+.hashtag-skills-input {
+  position: relative;
+}
+
+.hashtag-tag {
+  background: var(--color-bg-3);
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.hashtag-tag::before {
+  content: '#';
+  margin-right: var(--space-4);
+  font-weight: var(--font-weight-bold);
+}
+
+.skill-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-base);
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: var(--space-12);
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+  transition: background-color 0.2s ease;
+}
+
+.suggestion-item:hover {
+  background: var(--color-bg-1);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
 /* Form Buttons */
 .form-buttons {
   display: flex;

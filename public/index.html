@@ -548,7 +548,7 @@
                     
                     <div class="form-group">
                         <label class="form-label">任務類別 *</label>
-                        <select class="form-control" id="taskCategory" required>
+                        <select class="form-control" id="taskCategory" required onchange="handleCategoryChange()">
                             <option value="">選擇類別</option>
                             <option value="網頁開發">網頁開發</option>
                             <option value="平面設計">平面設計</option>
@@ -558,12 +558,33 @@
                             <option value="UI/UX設計">UI/UX設計</option>
                             <option value="資料分析">資料分析</option>
                             <option value="影片製作">影片製作</option>
+                            <option value="其他">其他</option>
                         </select>
+                        <div id="customCategoryContainer" class="form-group" style="display: none; margin-top: var(--space-8);">
+                            <label class="form-label">請輸入自訂類別 *</label>
+                            <input type="text" class="form-control" id="customCategory" placeholder="例如：區塊鏈開發、AI訓練...">
+                        </div>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">任務描述 *</label>
                         <textarea class="form-control" id="taskDescription" rows="6" placeholder="詳細描述您的需求，包括項目背景、具體要求、預期成果等..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">預算貨幣 *</label>
+                        <select class="form-control" id="taskCurrency" required>
+                            <option value="USD">USD - 美元</option>
+                            <option value="HKD">HKD - 港幣</option>
+                            <option value="CNY">CNY - 人民幣</option>
+                            <option value="TWD">TWD - 台幣</option>
+                            <option value="KRW">KRW - 韓元</option>
+                            <option value="MYR">MYR - 馬來西亞令吉</option>
+                            <option value="JPY">JPY - 日圓</option>
+                            <option value="EUR">EUR - 歐元</option>
+                            <option value="GBP">GBP - 英鎊</option>
+                            <option value="SGD">SGD - 新加坡元</option>
+                        </select>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
@@ -579,8 +600,8 @@
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
                         <div class="form-group">
-                            <label class="form-label">預計完成時間 *</label>
-                            <input type="text" class="form-control" id="taskDuration" placeholder="例如：2-4週、1個月" required>
+                            <label class="form-label">預計完成時間 (天數) *</label>
+                            <input type="number" class="form-control" id="taskDuration" placeholder="例如：14" min="1" max="365" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">經驗要求</label>
@@ -592,37 +613,38 @@
                         </div>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-16);">
-                        <div class="form-group">
-                            <label class="form-label">截止日期</label>
-                            <input type="date" class="form-control" id="taskDeadline">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">時區</label>
-                            <select class="form-control" id="taskTimezone">
-                                <option value="GMT+8">GMT+8 (台灣/香港)</option>
-                                <option value="GMT+0">GMT+0 (倫敦)</option>
-                                <option value="GMT-5">GMT-5 (紐約)</option>
-                                <option value="GMT+9">GMT+9 (東京)</option>
-                                <option value="任何時區">任何時區</option>
-                            </select>
-                        </div>
+                    <div class="form-group">
+                        <label class="form-label">截止日期</label>
+                        <input type="date" class="form-control" id="taskDeadline">
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">所需技能 <span style="color: var(--color-error);">*</span></label>
-                        <div class="skills-input">
-                            <input type="text" class="form-control" id="taskSkillInput" placeholder="輸入技能並按 Enter" required>
+                        <div class="hashtag-skills-input">
+                            <input type="text" class="form-control" id="taskSkillInput" placeholder="輸入技能標籤後按 Enter (最多10個，每個最多20字)" maxlength="20">
                             <div class="skills-tags" id="taskSkillsTags"></div>
+                            <div id="skillSuggestions" class="skill-suggestions" style="display: none;"></div>
                         </div>
                         <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--space-4);">
-                            請至少輸入一個技能
+                            請至少輸入一個技能標籤，最多10個，每個最多20個字符
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" style="background: var(--color-bg-3); padding: var(--space-12); border-radius: var(--radius-base); border-left: 4px solid var(--color-warning);">
+                        <div style="display: flex; align-items: center; gap: var(--space-8);">
+                            <span style="font-size: 1.2rem;">⚠️</span>
+                            <div>
+                                <strong style="color: var(--color-warning);">任務審核提醒</strong>
+                                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--space-4);">
+                                    您發布的任務需要經過管理員審核後才會在平台上顯示。審核時間通常為1-2個工作日。
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="form-buttons">
                         <button type="button" class="btn btn--outline" onclick="closeModal('postTaskModal')">取消</button>
-                        <button type="submit" class="btn btn--primary">發布任務</button>
+                        <button type="submit" class="btn btn--primary">提交審核</button>
                     </div>
                 </form>
             </div>
@@ -811,4 +833,5 @@
 
     <script src="app.js"></script>
 </body>
+</html>
 </html>

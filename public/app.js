@@ -363,19 +363,25 @@ async function handleTaskSubmission(e) {
         return;
     }
     
+    // Get category (handle custom category)
+    const categorySelect = document.getElementById('taskCategory');
+    const category = categorySelect.value === '其他' ? 
+        document.getElementById('customCategory').value : 
+        categorySelect.value;
+    
     const formData = {
         title: document.getElementById('taskTitle').value,
-        category: document.getElementById('taskCategory').value,
+        category: category,
         description: document.getElementById('taskDescription').value,
         budget_min: parseInt(document.getElementById('budgetMin').value),
         budget_max: parseInt(document.getElementById('budgetMax').value),
+        currency: document.getElementById('taskCurrency').value,
         duration: document.getElementById('taskDuration').value,
         experience_level: document.getElementById('experienceLevel').value,
         deadline: document.getElementById('taskDeadline').value,
-        timezone: document.getElementById('taskTimezone').value,
         skills: taskSkills,
         client_id: currentUser.id,
-        status: 'open'
+        status: 'pending' // New tasks need admin approval
     };
     
     try {
@@ -1168,6 +1174,30 @@ function setupFormHandlers() {
           this.value = '';
         }
       }
+    });
+  }
+
+  // Task skills input with hashtag functionality
+  const taskSkillInput = document.getElementById('taskSkillInput');
+  if (taskSkillInput) {
+    taskSkillInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const skill = this.value.trim();
+        if (skill) {
+          addTaskSkill(skill);
+          this.value = '';
+        }
+      }
+    });
+    
+    taskSkillInput.addEventListener('input', function() {
+      showSkillSuggestions(this);
+    });
+    
+    taskSkillInput.addEventListener('blur', function() {
+      // Delay hiding suggestions to allow clicking on them
+      setTimeout(hideSkillSuggestions, 200);
     });
   }
 
@@ -3576,3 +3606,99 @@ window.addExpertSkill = addExpertSkill;
 window.removeExpertSkill = removeExpertSkill;
 window.addExpertLanguage = addExpertLanguage;
 window.removeExpertLanguage = removeExpertLanguage;
+window.handleCategoryChange = handleCategoryChange;
+window.addTaskSkill = addTaskSkill;
+window.removeTaskSkill = removeTaskSkill;
+window.selectSkillSuggestion = selectSkillSuggestion;
+
+// Task Creation Enhancements
+function handleCategoryChange() {
+  const categorySelect = document.getElementById('taskCategory');
+  const customContainer = document.getElementById('customCategoryContainer');
+  const customInput = document.getElementById('customCategory');
+  
+  if (categorySelect.value === '其他') {
+    customContainer.style.display = 'block';
+    customInput.required = true;
+  } else {
+    customContainer.style.display = 'none';
+    customInput.required = false;
+    customInput.value = '';
+  }
+}
+
+// Enhanced skills management with hashtag style and suggestions
+let taskSkills = [];
+let skillSuggestions = [
+  'JavaScript', 'Python', 'React', 'Vue.js', 'Node.js', 'PHP', 'Java', 'C++', 'C#', 'Swift',
+  'HTML', 'CSS', 'SQL', 'MongoDB', 'PostgreSQL', 'AWS', 'Docker', 'Git', 'Figma', 'Photoshop',
+  'Illustrator', 'Sketch', 'InDesign', 'Premiere Pro', 'After Effects', 'Blender', 'Unity',
+  'WordPress', 'Shopify', 'WooCommerce', 'SEO', 'Google Analytics', 'Facebook Ads', 'Instagram',
+  'Content Writing', 'Copywriting', 'Translation', 'Data Analysis', 'Machine Learning', 'AI',
+  'Blockchain', 'Web3', 'NFT', 'Cryptocurrency', 'Trading', 'Finance', 'Marketing', 'Sales',
+  'Project Management', 'Agile', 'Scrum', 'UI/UX Design', 'Product Design', 'Branding',
+  'Video Editing', 'Animation', '3D Modeling', 'Photography', 'Social Media', 'Email Marketing'
+];
+
+function addTaskSkill(skill) {
+  if (taskSkills.length >= 10) {
+    showNotification('最多只能添加10個技能標籤', 'warning');
+    return;
+  }
+  
+  if (skill && skill.trim() !== '' && !taskSkills.includes(skill.trim())) {
+    taskSkills.push(skill.trim());
+    updateTaskSkillsDisplay();
+    hideSkillSuggestions();
+  }
+}
+
+function removeTaskSkill(skill) {
+  taskSkills = taskSkills.filter(s => s !== skill);
+  updateTaskSkillsDisplay();
+}
+
+function updateTaskSkillsDisplay() {
+  const container = document.getElementById('taskSkillsTags');
+  container.innerHTML = '';
+  
+  taskSkills.forEach(skill => {
+    const tag = document.createElement('span');
+    tag.className = 'skill-tag hashtag-tag';
+    tag.innerHTML = `#${skill} <span class="remove-skill" onclick="removeTaskSkill('${skill}')">&times;</span>`;
+    container.appendChild(tag);
+  });
+}
+
+function showSkillSuggestions(input) {
+  const suggestionsContainer = document.getElementById('skillSuggestions');
+  const query = input.value.toLowerCase();
+  
+  if (query.length < 2) {
+    hideSkillSuggestions();
+    return;
+  }
+  
+  const filtered = skillSuggestions.filter(skill => 
+    skill.toLowerCase().includes(query) && !taskSkills.includes(skill)
+  ).slice(0, 5);
+  
+  if (filtered.length > 0) {
+    suggestionsContainer.innerHTML = filtered.map(skill => 
+      `<div class="suggestion-item" onclick="selectSkillSuggestion('${skill}')">${skill}</div>`
+    ).join('');
+    suggestionsContainer.style.display = 'block';
+  } else {
+    hideSkillSuggestions();
+  }
+}
+
+function hideSkillSuggestions() {
+  document.getElementById('skillSuggestions').style.display = 'none';
+}
+
+function selectSkillSuggestion(skill) {
+  addTaskSkill(skill);
+  document.getElementById('taskSkillInput').value = '';
+  hideSkillSuggestions();
+}
