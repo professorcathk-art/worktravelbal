@@ -2555,6 +2555,17 @@ async function populateAdminPortal() {
             <!-- Users will be loaded here -->
           </div>
         </div>
+        
+        <div class="admin-section">
+          <h3>任務管理</h3>
+          <div class="admin-actions">
+            <button class="btn btn--primary" onclick="loadAllTasks()">查看所有任務</button>
+            <button class="btn btn--outline" onclick="loadOpenTasks()">查看開放任務</button>
+          </div>
+          <div id="taskList" class="task-list">
+            <!-- Tasks will be loaded here -->
+          </div>
+        </div>
       </div>
     </div>
   `;
@@ -2565,9 +2576,10 @@ async function populateAdminPortal() {
 
 async function loadAdminStats() {
   try {
-    const response = await fetch('/api/admin?admin_email=professor.cat.hk@gmail.com&action=users');
-    if (response.ok) {
-      const users = await response.json();
+    // Load user statistics
+    const userResponse = await fetch('/api/admin?admin_email=professor.cat.hk@gmail.com&action=users');
+    if (userResponse.ok) {
+      const users = await userResponse.json();
       const totalUsers = users.length;
       const verifiedUsers = users.filter(u => u.verified).length;
       const unverifiedUsers = totalUsers - verifiedUsers;
@@ -2575,6 +2587,15 @@ async function loadAdminStats() {
       document.getElementById('totalUsers').textContent = totalUsers;
       document.getElementById('verifiedUsers').textContent = verifiedUsers;
       document.getElementById('unverifiedUsers').textContent = unverifiedUsers;
+    }
+
+    // Load task statistics
+    const taskResponse = await fetch('/api/tasks');
+    if (taskResponse.ok) {
+      const tasks = await taskResponse.json();
+      const totalTasks = tasks.length;
+      
+      document.getElementById('totalTasks').textContent = totalTasks;
     }
   } catch (error) {
     console.error('Error loading admin stats:', error);
@@ -2732,9 +2753,102 @@ async function unverifyUser(userId) {
   }
 }
 
+async function loadAllTasks() {
+  try {
+    const response = await fetch('/api/tasks');
+    if (response.ok) {
+      const tasks = await response.json();
+      displayTaskList(tasks, 'all');
+    }
+  } catch (error) {
+    console.error('Error loading all tasks:', error);
+  }
+}
+
+async function loadOpenTasks() {
+  try {
+    const response = await fetch('/api/tasks');
+    if (response.ok) {
+      const tasks = await response.json();
+      const openTasks = tasks.filter(task => task.status === 'open');
+      displayTaskList(openTasks, 'open');
+    }
+  } catch (error) {
+    console.error('Error loading open tasks:', error);
+  }
+}
+
+function displayTaskList(tasks, type) {
+  const taskList = document.getElementById('taskList');
+  if (!taskList) return;
+  
+  if (tasks.length === 0) {
+    taskList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-20);">沒有找到任務</p>';
+    return;
+  }
+  
+  taskList.innerHTML = tasks.map(task => `
+    <div class="task-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); margin-bottom: var(--space-12);">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+        <div>
+          <h4 style="margin: 0; color: var(--color-text-primary);">${task.title}</h4>
+          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">${task.company || '未知公司'}</div>
+          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">預算: ${task.budget_min ? `$${task.budget_min}` : '未指定'} - ${task.budget_max ? `$${task.budget_max}` : '未指定'}</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="task-status" style="padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm); background: ${getStatusColor(task.status)}; color: white; margin-bottom: var(--space-8);">
+            ${getStatusText(task.status)}
+          </div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+            ${new Date(task.created_at).toLocaleDateString('zh-TW')}
+          </div>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: var(--space-12);">
+        <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: var(--space-4);">任務描述:</div>
+        <div style="color: var(--color-text-primary); line-height: 1.5;">${task.description.substring(0, 200)}${task.description.length > 200 ? '...' : ''}</div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-12); margin-bottom: var(--space-16);">
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">申請數</div>
+          <div style="font-weight: var(--font-weight-medium);">${task.applications_count || 0}</div>
+        </div>
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">經驗要求</div>
+          <div style="font-weight: var(--font-weight-medium);">${task.experience_level || '未指定'}</div>
+        </div>
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">遠程工作</div>
+          <div style="font-weight: var(--font-weight-medium);">${task.remote ? '是' : '否'}</div>
+        </div>
+        ${task.deadline ? `
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">截止日期</div>
+          <div style="font-weight: var(--font-weight-medium);">${new Date(task.deadline).toLocaleDateString('zh-TW')}</div>
+        </div>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function getStatusText(status) {
+  switch (status) {
+    case 'open': return '開放中';
+    case 'in_progress': return '進行中';
+    case 'completed': return '已完成';
+    case 'cancelled': return '已取消';
+    default: return status;
+  }
+}
+
 // Global functions for admin
 window.populateAdminPortal = populateAdminPortal;
 window.loadUnverifiedUsers = loadUnverifiedUsers;
 window.loadAllUsers = loadAllUsers;
 window.verifyUser = verifyUser;
 window.unverifyUser = unverifyUser;
+window.loadAllTasks = loadAllTasks;
+window.loadOpenTasks = loadOpenTasks;
