@@ -341,6 +341,28 @@ async function handleTaskSubmission(e) {
         return;
     }
     
+    // Validate required skills
+    if (!taskSkills || taskSkills.length === 0) {
+        showNotification('請至少輸入一個所需技能', 'error');
+        
+        // Add error styling to the skills form group
+        const skillsFormGroup = document.getElementById('taskSkillInput').closest('.form-group');
+        if (skillsFormGroup) {
+            skillsFormGroup.classList.add('error');
+            // Remove error styling after 3 seconds
+            setTimeout(() => {
+                skillsFormGroup.classList.remove('error');
+            }, 3000);
+        }
+        
+        // Focus on the skills input field
+        const skillInput = document.getElementById('taskSkillInput');
+        if (skillInput) {
+            skillInput.focus();
+        }
+        return;
+    }
+    
     const formData = {
         title: document.getElementById('taskTitle').value,
         category: document.getElementById('taskCategory').value,
@@ -2418,26 +2440,29 @@ async function populateExpertPortal(content) {
         <div class="profile-section">
           <h3>我的申請 (${userApplications.length})</h3>
           ${userApplications.length === 0 ? '<p style="color: var(--color-text-secondary);">您還沒有申請任何任務</p>' : ''}
-          ${userApplications.map(app => {
-            const task = platformData.tasks.find(t => t.id === app.taskId);
-            return task ? `
-              <div class="application-card">
-                <div class="application-header">
-                  <div>
-                    <div style="font-weight: var(--font-weight-semibold);">${task.title}</div>
-                    <div style="color: var(--color-text-secondary);">${task.company}</div>
-                  </div>
-                  <div class="application-status status-${app.status}">${getStatusText(app.status)}</div>
+          ${userApplications.map(app => `
+            <div class="application-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); margin-bottom: var(--space-12);">
+              <div class="application-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+                <div>
+                  <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${app.task_title}</div>
+                  <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">${app.client_name || '未知客戶'}</div>
+                  <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">預算: ${app.budget_min ? `$${app.budget_min}` : '未指定'} - ${app.budget_max ? `$${app.budget_max}` : '未指定'}</div>
                 </div>
-                <div style="margin-bottom: var(--space-8);">
-                  <strong>提案金額:</strong> $${app.bidAmount} • <strong>交付時間:</strong> ${app.deliveryTime}天
-                </div>
-                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                  申請時間: ${new Date(app.appliedAt).toLocaleDateString()}
+                <div class="application-status" style="padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm); background: ${getApplicationStatusColor(app.status)}; color: white;">
+                  ${getApplicationStatusText(app.status)}
                 </div>
               </div>
-            ` : '';
-          }).join('')}
+              <div class="application-details" style="margin-bottom: var(--space-12);">
+                <div style="margin-bottom: var(--space-8);"><strong>我的提案:</strong> ${app.proposal_text}</div>
+                <div style="margin-bottom: var(--space-8);"><strong>我的報價:</strong> $${app.bid_amount}</div>
+                <div style="margin-bottom: var(--space-8);"><strong>預計完成時間:</strong> ${app.delivery_time} 天</div>
+                ${app.portfolio_link ? `<div><strong>作品集:</strong> <a href="${app.portfolio_link}" target="_blank" style="color: var(--color-primary);">查看作品集</a></div>` : ''}
+              </div>
+              <div class="application-meta" style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                <span>申請時間: ${new Date(app.created_at).toLocaleDateString('zh-TW')}</span>
+              </div>
+            </div>
+          `).join('')}
         </div>
         
         <div class="profile-section">
@@ -2445,16 +2470,32 @@ async function populateExpertPortal(content) {
           ${userSavedTasks.length === 0 ? '<p style="color: var(--color-text-secondary);">您還沒有收藏任何任務</p>' : ''}
           <div style="display: grid; gap: var(--space-12);">
             ${userSavedTasks.map(task => `
-              <div class="application-card saved-task-card" style="cursor: pointer;" data-task-id="${task.id}">
-                <div class="application-header">
+              <div class="application-card saved-task-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer;" data-task-id="${task.task_id}" onclick="showTaskDetails('${task.task_id}')">
+                <div class="application-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
                   <div>
-                    <div style="font-weight: var(--font-weight-semibold);">${task.title}</div>
-                    <div style="color: var(--color-text-secondary);">${task.company}</div>
+                    <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${task.title}</div>
+                    <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">${task.client_name || '未知客戶'}</div>
+                    <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">${task.category_name || '未分類'}</div>
                   </div>
-                  <div style="font-size: var(--font-size-sm); color: var(--color-primary);">${task.budget}</div>
+                  <div style="font-size: var(--font-size-sm); color: var(--color-primary); font-weight: var(--font-weight-medium);">
+                    ${task.budget_min ? `$${task.budget_min}` : '未指定'} - ${task.budget_max ? `$${task.budget_max}` : '未指定'}
+                  </div>
                 </div>
-                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                  ${task.duration} • 截止: ${task.deadline}
+                <div style="margin-bottom: var(--space-12);">
+                  <div style="color: var(--color-text-primary); line-height: 1.5;">${task.description.substring(0, 150)}${task.description.length > 150 ? '...' : ''}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                  <div>
+                    ${task.duration ? `${task.duration}` : '未指定時間'} • 
+                    ${task.experience_level ? `${task.experience_level}` : '任何經驗'} • 
+                    ${task.remote ? '遠程' : '現場'}
+                  </div>
+                  <div>
+                    ${task.deadline ? `截止: ${new Date(task.deadline).toLocaleDateString('zh-TW')}` : '無截止日期'}
+                  </div>
+                </div>
+                <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--space-8);">
+                  收藏時間: ${new Date(task.created_at).toLocaleDateString('zh-TW')}
                 </div>
               </div>
             `).join('')}
@@ -3033,6 +3074,26 @@ function getStatusText(status) {
     case 'completed': return '已完成';
     case 'cancelled': return '已取消';
     default: return status;
+  }
+}
+
+function getApplicationStatusText(status) {
+  switch (status) {
+    case 'pending': return '待審核';
+    case 'accepted': return '已接受';
+    case 'rejected': return '已拒絕';
+    case 'withdrawn': return '已撤回';
+    default: return status;
+  }
+}
+
+function getApplicationStatusColor(status) {
+  switch (status) {
+    case 'pending': return 'var(--color-warning)';
+    case 'accepted': return 'var(--color-success)';
+    case 'rejected': return 'var(--color-error)';
+    case 'withdrawn': return 'var(--color-text-secondary)';
+    default: return 'var(--color-text-secondary)';
   }
 }
 

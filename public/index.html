@@ -610,10 +610,13 @@
                     </div>
                     
                     <div class="form-group">
-                        <label class="form-label">所需技能</label>
+                        <label class="form-label">所需技能 <span style="color: var(--color-error);">*</span></label>
                         <div class="skills-input">
-                            <input type="text" class="form-control" id="taskSkillInput" placeholder="輸入技能並按 Enter">
+                            <input type="text" class="form-control" id="taskSkillInput" placeholder="輸入技能並按 Enter" required>
                             <div class="skills-tags" id="taskSkillsTags"></div>
+                        </div>
+                        <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: var(--space-4);">
+                            請至少輸入一個技能
                         </div>
                     </div>
                     
