@@ -481,15 +481,12 @@ function displayMyTasks(tasks) {
 
 function updateTaskStats(tasks) {
   const totalTasks = tasks.length;
-  const totalApplications = tasks.reduce((sum, task) => sum + (task.application_count || 0), 0);
   const activeProjects = tasks.filter(task => task.status === 'in_progress').length;
   
   const totalTasksEl = document.getElementById('totalTasks');
-  const totalApplicationsEl = document.getElementById('totalApplications');
   const activeProjectsEl = document.getElementById('activeProjects');
   
   if (totalTasksEl) totalTasksEl.textContent = totalTasks;
-  if (totalApplicationsEl) totalApplicationsEl.textContent = totalApplications;
   if (activeProjectsEl) activeProjectsEl.textContent = activeProjects;
 }
 
@@ -848,8 +845,9 @@ function initializeApp() {
     const savedUser = localStorage.getItem('currentUser');
     if (savedUser) {
       currentUser = JSON.parse(savedUser);
-      updateAuthState();
     }
+    // Always update auth state, whether user is logged in or not
+    updateAuthState();
 
     const savedApplications = localStorage.getItem('applications');
     if (savedApplications) {
@@ -1078,8 +1076,10 @@ function showSection(sectionName) {
 
 // Modal functions
 function openModal(modalName, userType = null) {
+  console.log('Opening modal:', modalName);
   const modal = document.getElementById(modalName + 'Modal');
   if (modal) {
+    console.log('Modal found, removing hidden class');
     modal.classList.remove('hidden');
     
     if (modalName === 'register' && userType) {
@@ -1088,6 +1088,8 @@ function openModal(modalName, userType = null) {
       document.getElementById('registerForm').classList.remove('hidden');
       updateFormFields();
     }
+  } else {
+    console.log('Modal not found:', modalName + 'Modal');
   }
 }
 
@@ -1465,7 +1467,10 @@ function calculateProfileCompletion() {
 
 function updateAuthState() {
   const authButtons = document.querySelector('.auth-buttons');
-  if (!authButtons) return;
+  if (!authButtons) {
+    console.log('Auth buttons container not found');
+    return;
+  }
   
   if (currentUser) {
     const isAdmin = currentUser.type === 'admin';
@@ -1476,19 +1481,46 @@ function updateAuthState() {
     `;
     
     // Add event listeners
-    document.getElementById('portalBtn').addEventListener('click', () => {
-      showSection(isAdmin ? 'admin' : 'portal');
-    });
-    document.getElementById('logoutBtn').addEventListener('click', logout);
+    const portalBtn = document.getElementById('portalBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    
+    if (portalBtn) {
+      portalBtn.addEventListener('click', () => {
+        showSection(isAdmin ? 'admin' : 'portal');
+      });
+    }
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', logout);
+    }
   } else {
     authButtons.innerHTML = `
       <button class="btn btn--outline btn--sm" id="loginBtn">登入</button>
       <button class="btn btn--primary btn--sm" id="registerBtn">加入平台</button>
     `;
     
-    // Add event listeners
-    document.getElementById('loginBtn').addEventListener('click', () => openModal('login'));
-    document.getElementById('registerBtn').addEventListener('click', () => openModal('register'));
+    // Add event listeners with error handling
+    setTimeout(() => {
+      const loginBtn = document.getElementById('loginBtn');
+      const registerBtn = document.getElementById('registerBtn');
+      
+      if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+          console.log('Login button clicked');
+          openModal('login');
+        });
+      } else {
+        console.log('Login button not found');
+      }
+      
+      if (registerBtn) {
+        registerBtn.addEventListener('click', () => {
+          console.log('Register button clicked');
+          openModal('register');
+        });
+      } else {
+        console.log('Register button not found');
+      }
+    }, 100);
   }
 }
 
@@ -1612,6 +1644,7 @@ function populateExperts(experts = platformData.experts) {
     const completedProjects = expert.completed_projects || 0;
     const hourlyRate = expert.hourly_rate || '$40-60';
     const skills = expert.skills || ['專業服務'];
+    const availabilityStatus = expert.availability_status || 'busy';
     
     const card = document.createElement('div');
     card.className = 'expert-card';
@@ -1638,7 +1671,9 @@ function populateExperts(experts = platformData.experts) {
       </div>
       <div class="expert-footer">
         <div class="expert-rate">${hourlyRate}/時</div>
-        <div class="expert-status status-busy">暫時約滿</div>
+        <div class="expert-status ${availabilityStatus === 'available' ? 'status-available' : 'status-busy'}">
+          ${availabilityStatus === 'available' ? '可接案' : '暫時約滿'}
+        </div>
       </div>
     `;
     
@@ -2323,10 +2358,6 @@ function populateClientPortal(content) {
             <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-2); border-radius: var(--radius-base);">
               <div id="totalTasks" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-warning);">0</div>
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">發布任務</div>
-            </div>
-            <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-5); border-radius: var(--radius-base);">
-              <div id="totalApplications" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-info);">0</div>
-              <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">收到申請</div>
             </div>
             <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-4); border-radius: var(--radius-base);">
               <div id="activeProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-error);">0</div>

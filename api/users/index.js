@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
   if (req.method === 'OPTIONS') {
@@ -57,7 +57,8 @@ module.exports = async (req, res) => {
             ep.reviews_count,
             ep.response_time,
             ep.availability,
-            ep.completed_projects
+            ep.completed_projects,
+            ep.availability_status
           FROM users u
           LEFT JOIN expert_profiles ep ON u.id = ep.user_id
           WHERE u.user_type = 'expert' AND u.verified = true
@@ -131,6 +132,45 @@ module.exports = async (req, res) => {
       console.error('Error creating user:', error);
       res.status(500).json({ 
         error: 'Failed to create user',
+        details: error.message
+      });
+    }
+  } else if (req.method === 'PATCH') {
+    // Update user availability status
+    try {
+      const { user_id, availability_status } = req.body;
+      
+      if (!user_id || !availability_status) {
+        return res.status(400).json({ error: 'user_id and availability_status are required' });
+      }
+
+      if (!['available', 'busy'].includes(availability_status)) {
+        return res.status(400).json({ error: 'availability_status must be "available" or "busy"' });
+      }
+
+      console.log('Updating availability status for user:', user_id, 'to:', availability_status);
+
+      // Update or insert expert profile with availability status
+      const result = await pool.query(`
+        INSERT INTO expert_profiles (user_id, availability_status, updated_at)
+        VALUES ($1, $2, NOW())
+        ON CONFLICT (user_id) 
+        DO UPDATE SET 
+          availability_status = $2,
+          updated_at = NOW()
+        RETURNING *
+      `, [user_id, availability_status]);
+
+      console.log('Availability status updated successfully');
+      res.status(200).json({
+        message: 'Availability status updated successfully',
+        availability_status: availability_status
+      });
+
+    } catch (error) {
+      console.error('Error updating availability status:', error);
+      res.status(500).json({ 
+        error: 'Failed to update availability status',
         details: error.message
       });
     }
