@@ -41,8 +41,10 @@ module.exports = async (req, res) => {
       } else if (type === 'verified_experts') {
         // Get verified experts for the experts section
         console.log('Fetching verified experts');
-
-        const result = await pool.query(`
+        
+        const { skill_filter, location_filter, rate_filter } = req.query;
+        
+        let query = `
           SELECT 
             u.id,
             u.email,
@@ -58,12 +60,50 @@ module.exports = async (req, res) => {
             ep.response_time,
             ep.availability,
             ep.completed_projects,
-            ep.availability_status
+            ep.availability_status,
+            ARRAY_AGG(DISTINCT s.name) as skills
           FROM users u
           LEFT JOIN expert_profiles ep ON u.id = ep.user_id
+          LEFT JOIN expert_skills es ON u.id = es.expert_id
+          LEFT JOIN skills s ON es.skill_id = s.id
           WHERE u.user_type = 'expert' AND u.verified = true
+        `;
+        
+        const queryParams = [];
+        let paramCount = 0;
+        
+        // Add skill filter
+        if (skill_filter) {
+          paramCount++;
+          query += ` AND s.name = $${paramCount}`;
+          queryParams.push(skill_filter);
+        }
+        
+        // Add location filter
+        if (location_filter) {
+          paramCount++;
+          query += ` AND ep.current_location ILIKE $${paramCount}`;
+          queryParams.push(`%${location_filter}%`);
+        }
+        
+        // Add rate filter
+        if (rate_filter) {
+          const rateRanges = {
+            'low': 'ep.hourly_rate::int <= 30',
+            'medium': 'ep.hourly_rate::int BETWEEN 31 AND 60',
+            'high': 'ep.hourly_rate::int > 60'
+          };
+          if (rateRanges[rate_filter]) {
+            query += ` AND ${rateRanges[rate_filter]}`;
+          }
+        }
+        
+        query += `
+          GROUP BY u.id, ep.hourly_rate, ep.current_location, ep.timezone, ep.rating, ep.reviews_count, ep.response_time, ep.availability, ep.completed_projects, ep.availability_status
           ORDER BY u.created_at DESC
-        `);
+        `;
+
+        const result = await pool.query(query, queryParams);
         
         console.log('Found', result.rows.length, 'verified experts');
         res.status(200).json(result.rows);

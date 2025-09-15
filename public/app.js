@@ -865,6 +865,7 @@ function initializeApp() {
   // Populate initial data
   populateCategories();
   populateDestinations();
+  loadSkills(); // Load skills from API
   loadVerifiedExperts(); // Load verified experts from API
   loadAndPopulateTasks(); // Load real tasks from API
   populateCoworkingSpaces();
@@ -951,6 +952,14 @@ function setupEventListeners() {
     const filter = document.getElementById(filterId);
     if (filter) {
       filter.addEventListener('change', searchTasks);
+    }
+  });
+
+  // Expert filter event listeners
+  ['skillFilter', 'locationFilter', 'rateFilter'].forEach(filterId => {
+    const filter = document.getElementById(filterId);
+    if (filter) {
+      filter.addEventListener('change', searchExperts);
     }
   });
 
@@ -1602,11 +1611,64 @@ function populateDestinations() {
   });
 }
 
-// Load verified experts from API
-async function loadVerifiedExperts() {
+// Load skills from API
+async function loadSkills() {
   try {
-    console.log('Loading verified experts from API...');
-    const response = await fetch('/api/users?type=verified_experts');
+    console.log('Loading skills from API...');
+    const response = await fetch('/api/skills');
+    if (response.ok) {
+      const skills = await response.json();
+      console.log('Loaded skills:', skills);
+      populateSkillsFilter(skills);
+    } else {
+      console.error('Failed to load skills, using static data');
+      populateSkillsFilter([
+        { name: 'React', expert_count: 5 },
+        { name: 'UI/UX設計', expert_count: 3 },
+        { name: '數位行銷', expert_count: 4 },
+        { name: '內容創作', expert_count: 2 }
+      ]);
+    }
+  } catch (error) {
+    console.error('Error loading skills:', error);
+    populateSkillsFilter([
+      { name: 'React', expert_count: 5 },
+      { name: 'UI/UX設計', expert_count: 3 },
+      { name: '數位行銷', expert_count: 4 },
+      { name: '內容創作', expert_count: 2 }
+    ]);
+  }
+}
+
+// Populate skills filter dropdown
+function populateSkillsFilter(skills) {
+  const skillFilter = document.getElementById('skillFilter');
+  if (!skillFilter) return;
+  
+  // Clear existing options except the first one
+  skillFilter.innerHTML = '<option value="">所有技能</option>';
+  
+  // Add skills from API
+  skills.forEach(skill => {
+    const option = document.createElement('option');
+    option.value = skill.name;
+    option.textContent = `${skill.name} (${skill.expert_count})`;
+    skillFilter.appendChild(option);
+  });
+}
+
+// Load verified experts from API with filters
+async function loadVerifiedExperts(filters = {}) {
+  try {
+    console.log('Loading verified experts from API with filters:', filters);
+    
+    // Build query parameters
+    const params = new URLSearchParams({ type: 'verified_experts' });
+    if (filters.skill) params.append('skill_filter', filters.skill);
+    if (filters.location) params.append('location_filter', filters.location);
+    if (filters.rate) params.append('rate_filter', filters.rate);
+    
+    const response = await fetch(`/api/users?${params.toString()}`);
     if (response.ok) {
       const experts = await response.json();
       console.log('Loaded verified experts:', experts);
@@ -1792,26 +1854,39 @@ function populateCoworkingSpaces() {
 }
 
 // Search functions
-function searchExperts() {
+async function searchExperts() {
   const searchTerm = document.getElementById('expertSearch')?.value.toLowerCase() || '';
   const skillFilter = document.getElementById('skillFilter')?.value || '';
   const locationFilter = document.getElementById('locationFilter')?.value || '';
   const rateFilter = document.getElementById('rateFilter')?.value || '';
   
-  let filteredExperts = platformData.experts.filter(expert => {
-    const matchesSearch = !searchTerm || 
-      expert.name.toLowerCase().includes(searchTerm) ||
-      expert.title.toLowerCase().includes(searchTerm) ||
-      expert.skills.some(skill => skill.toLowerCase().includes(searchTerm));
-    
-    const matchesSkill = !skillFilter || expert.skills.includes(skillFilter);
-    const matchesLocation = !locationFilter || getLocationRegion(expert.location) === locationFilter;
-    const matchesRate = !rateFilter || checkRateRange(expert.hourlyRate, rateFilter);
-    
-    return matchesSearch && matchesSkill && matchesLocation && matchesRate;
-  });
+  // Build filters object for API call
+  const filters = {};
+  if (skillFilter) filters.skill = skillFilter;
+  if (locationFilter) filters.location = locationFilter;
+  if (rateFilter) filters.rate = rateFilter;
   
-  populateExperts(filteredExperts);
+  // Load experts with filters from API
+  await loadVerifiedExperts(filters);
+  
+  // If there's a search term, filter the results client-side
+  if (searchTerm) {
+    const grid = document.getElementById('expertsGrid');
+    if (grid) {
+      const expertCards = grid.querySelectorAll('.expert-card');
+      expertCards.forEach(card => {
+        const name = card.querySelector('.expert-name')?.textContent.toLowerCase() || '';
+        const title = card.querySelector('.expert-title')?.textContent.toLowerCase() || '';
+        const skills = Array.from(card.querySelectorAll('.skill-tag')).map(tag => tag.textContent.toLowerCase());
+        
+        const matchesSearch = name.includes(searchTerm) || 
+                             title.includes(searchTerm) ||
+                             skills.some(skill => skill.includes(searchTerm));
+        
+        card.style.display = matchesSearch ? 'block' : 'none';
+      });
+    }
+  }
 }
 
 async function searchTasks() {
@@ -2179,9 +2254,12 @@ function populatePortal() {
   }
 }
 
-function populateExpertPortal(content) {
-  const userApplications = applications.filter(app => app.userId === currentUser.id);
-  const userSavedTasks = savedTasks.map(taskId => platformData.tasks.find(task => task.id === taskId)).filter(Boolean);
+async function populateExpertPortal(content) {
+  // Load real data from APIs
+  const [userApplications, userSavedTasks] = await Promise.all([
+    loadUserApplications(),
+    loadUserSavedTasks()
+  ]);
   
   content.innerHTML = `
     <div class="portal-grid">
@@ -2192,6 +2270,17 @@ function populateExpertPortal(content) {
             <div class="completion-fill" style="width: ${currentUser.profileComplete}%"></div>
           </div>
           <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">${currentUser.profileComplete}% 完成</div>
+        </div>
+        
+        <div class="availability-status">
+          <h4>工作狀態</h4>
+          <div class="status-toggle">
+            <label class="toggle-switch">
+              <input type="checkbox" id="availabilityToggle" ${currentUser.availability_status === 'available' ? 'checked' : ''}>
+              <span class="toggle-slider"></span>
+            </label>
+            <span id="statusText" class="status-text">${currentUser.availability_status === 'available' ? '可接任務' : '暫時約滿'}</span>
+          </div>
         </div>
         
         <div class="profile-section">
