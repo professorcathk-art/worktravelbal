@@ -509,7 +509,7 @@ function updateTaskStats(tasks) {
   const activeProjectsEl = document.getElementById('activeProjects');
   
   if (totalTasksEl) totalTasksEl.textContent = totalTasks;
-  if (activeProjectsEl) activeProjectsEl.textContent = activeProjects;
+  if (activeProjectsEl) activeProjectsEl.textContent = '100+'; // Always show 100+ as requested
 }
 
 function getStatusColor(status) {
@@ -2593,7 +2593,7 @@ function populateClientPortal(content) {
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">發布任務</div>
             </div>
             <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-4); border-radius: var(--radius-base);">
-              <div id="activeProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-error);">0</div>
+              <div id="activeProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-error);">100+</div>
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">進行中項目</div>
             </div>
           </div>
@@ -2988,7 +2988,7 @@ async function unverifyUser(userId) {
 
 async function loadAllTasks() {
   try {
-    const response = await fetch('/api/tasks');
+    const response = await fetch('/api/tasks?all=true');
     if (response.ok) {
       const tasks = await response.json();
       displayTaskList(tasks, 'all');
@@ -3063,6 +3063,15 @@ function displayTaskList(tasks, type) {
         </div>
         ` : ''}
       </div>
+      
+      <div style="display: flex; justify-content: flex-end; gap: var(--space-8);">
+        <button class="btn btn--outline btn--sm" onclick="viewTaskDetails('${task.id}')">查看詳情</button>
+        ${task.status === 'open' ? `
+        <button class="btn btn--danger btn--sm" onclick="delistTask('${task.id}')">下架任務</button>
+        ` : task.status === 'cancelled' ? `
+        <button class="btn btn--primary btn--sm" onclick="reactivateTask('${task.id}')">重新上架</button>
+        ` : ''}
+      </div>
     </div>
   `).join('');
 }
@@ -3097,10 +3106,95 @@ function getApplicationStatusColor(status) {
   }
 }
 
+// Task management functions for admin
+async function delistTask(taskId) {
+  if (!confirm('確定要下架這個任務嗎？下架後專家將無法看到此任務。')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'cancelled'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('任務已成功下架', 'success');
+      // Reload the current task list
+      const currentView = document.querySelector('.btn--primary[onclick*="loadAllTasks"], .btn--primary[onclick*="loadOpenTasks"]');
+      if (currentView) {
+        if (currentView.onclick.toString().includes('loadAllTasks')) {
+          loadAllTasks();
+        } else {
+          loadOpenTasks();
+        }
+      }
+    } else {
+      showNotification('下架任務失敗', 'error');
+    }
+  } catch (error) {
+    console.error('Error delisting task:', error);
+    showNotification('下架任務時發生錯誤', 'error');
+  }
+}
+
+async function reactivateTask(taskId) {
+  if (!confirm('確定要重新上架這個任務嗎？')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'open'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('任務已成功重新上架', 'success');
+      // Reload the current task list
+      const currentView = document.querySelector('.btn--primary[onclick*="loadAllTasks"], .btn--primary[onclick*="loadOpenTasks"]');
+      if (currentView) {
+        if (currentView.onclick.toString().includes('loadAllTasks')) {
+          loadAllTasks();
+        } else {
+          loadOpenTasks();
+        }
+      }
+    } else {
+      showNotification('重新上架任務失敗', 'error');
+    }
+  } catch (error) {
+    console.error('Error reactivating task:', error);
+    showNotification('重新上架任務時發生錯誤', 'error');
+  }
+}
+
+function viewTaskDetails(taskId) {
+  // Find the task in the current task list and show its details
+  const taskCard = document.querySelector(`[data-task-id="${taskId}"]`);
+  if (taskCard) {
+    // Extract task data from the card or fetch it
+    showTaskDetails(taskId);
+  }
+}
+
 // Global functions for admin
 window.populateAdminPortal = populateAdminPortal;
 window.loadUnverifiedUsers = loadUnverifiedUsers;
 window.loadAllUsers = loadAllUsers;
+window.delistTask = delistTask;
+window.reactivateTask = reactivateTask;
+window.viewTaskDetails = viewTaskDetails;
 window.verifyUser = verifyUser;
 window.unverifyUser = unverifyUser;
 window.loadAllTasks = loadAllTasks;

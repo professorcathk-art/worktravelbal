@@ -22,20 +22,24 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'GET') {
-    // Get all tasks
+    // Get tasks (all or open only based on query parameter)
     try {
       console.log('Attempting to connect to database...');
       console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
       
+      const showAll = req.query.all === 'true';
+      const whereClause = showAll ? '' : "WHERE t.status = 'open'";
+      
       const result = await pool.query(`
         SELECT t.*, tc.name as category_name, u.name as client_name,
-               ARRAY_AGG(DISTINCT s.name) as skills
+               ARRAY_AGG(DISTINCT s.name) as skills,
+               (SELECT COUNT(*) FROM applications a WHERE a.task_id = t.id) as applications_count
         FROM tasks t
         LEFT JOIN task_categories tc ON t.category_id = tc.id
         LEFT JOIN users u ON t.client_id = u.id
         LEFT JOIN task_skills ts ON t.id = ts.task_id
         LEFT JOIN skills s ON ts.skill_id = s.id
-        WHERE t.status = 'open'
+        ${whereClause}
         GROUP BY t.id, tc.name, u.name
         ORDER BY t.created_at DESC
       `);
@@ -206,6 +210,43 @@ module.exports = async (req, res) => {
       code: error.code
     });
   }
+  } else if (req.method === 'PATCH') {
+    // Update task status (for admin delisting/reactivating)
+    try {
+      const taskId = req.query.id;
+      const { status } = req.body;
+
+      if (!taskId) {
+        return res.status(400).json({ error: 'Task ID is required' });
+      }
+
+      if (!status || !['open', 'cancelled', 'in_progress', 'completed'].includes(status)) {
+        return res.status(400).json({ error: 'Valid status is required' });
+      }
+
+      // Update task status
+      const result = await pool.query(
+        'UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+        [status, taskId]
+      );
+
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Task not found' });
+      }
+
+      console.log('Task status updated:', taskId, 'to', status);
+      res.status(200).json({
+        message: 'Task status updated successfully',
+        task: result.rows[0]
+      });
+
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      res.status(500).json({ 
+        error: 'Failed to update task status',
+        details: error.message
+      });
+    }
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }
