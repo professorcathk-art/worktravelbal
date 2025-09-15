@@ -3088,6 +3088,7 @@ async function populateAdminPortal() {
           <div class="admin-actions">
             <button class="btn btn--primary" onclick="loadAllTasks()">查看所有任務</button>
             <button class="btn btn--outline" onclick="loadOpenTasks()">查看開放任務</button>
+            <button class="btn btn--warning" onclick="loadPendingTasks()">查看待審核任務</button>
           </div>
           <div id="taskList" class="task-list">
             <!-- Tasks will be loaded here -->
@@ -3305,6 +3306,19 @@ async function loadOpenTasks() {
   }
 }
 
+async function loadPendingTasks() {
+  try {
+    const response = await fetch('/api/tasks?all=true');
+    if (response.ok) {
+      const tasks = await response.json();
+      const pendingTasks = tasks.filter(task => task.status === 'pending');
+      displayTaskList(pendingTasks, 'pending');
+    }
+  } catch (error) {
+    console.error('Error loading pending tasks:', error);
+  }
+}
+
 function displayTaskList(tasks, type) {
   const taskList = document.getElementById('taskList');
   if (!taskList) return;
@@ -3358,9 +3372,12 @@ function displayTaskList(tasks, type) {
         ` : ''}
       </div>
       
-      <div style="display: flex; justify-content: flex-end; gap: var(--space-8);">
+      <div style="display: flex; justify-content: flex-end; gap: var(--space-8); flex-wrap: wrap;">
         <button class="btn btn--outline btn--sm" onclick="viewTaskDetails('${task.id}')">查看詳情</button>
-        ${task.status === 'open' ? `
+        ${task.status === 'pending' ? `
+        <button class="btn btn--success btn--sm" onclick="approveTask('${task.id}')">批准任務</button>
+        <button class="btn btn--danger btn--sm" onclick="rejectTask('${task.id}')">拒絕任務</button>
+        ` : task.status === 'open' ? `
         <button class="btn btn--danger btn--sm" onclick="delistTask('${task.id}')">下架任務</button>
         ` : task.status === 'cancelled' ? `
         <button class="btn btn--primary btn--sm" onclick="reactivateTask('${task.id}')">重新上架</button>
@@ -3376,6 +3393,7 @@ function getStatusText(status) {
     case 'in_progress': return '進行中';
     case 'completed': return '已完成';
     case 'cancelled': return '已取消';
+    case 'pending': return '待審核';
     default: return status;
   }
 }
@@ -3703,6 +3721,9 @@ window.removeTaskSkill = removeTaskSkill;
 window.selectSkillSuggestion = selectSkillSuggestion;
 window.stopRecruitment = stopRecruitment;
 window.resumeRecruitment = resumeRecruitment;
+window.loadPendingTasks = loadPendingTasks;
+window.approveTask = approveTask;
+window.rejectTask = rejectTask;
 
 // Task Creation Enhancements
 function handleCategoryChange() {
@@ -3854,5 +3875,66 @@ async function resumeRecruitment(taskId) {
   } catch (error) {
     console.error('Error resuming recruitment:', error);
     showNotification('重新招人時發生錯誤', 'error');
+  }
+}
+
+// Admin task approval functions
+async function approveTask(taskId) {
+  if (!confirm('確定要批准這個任務嗎？批准後任務將在平台上顯示。')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/tasks?id=${taskId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'open'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('任務已批准', 'success');
+      // Refresh the pending tasks list
+      loadPendingTasks();
+    } else {
+      const error = await response.json();
+      showNotification('批准任務失敗：' + (error.error || '網絡錯誤'), 'error');
+    }
+  } catch (error) {
+    console.error('Error approving task:', error);
+    showNotification('批准任務時發生錯誤', 'error');
+  }
+}
+
+async function rejectTask(taskId) {
+  if (!confirm('確定要拒絕這個任務嗎？拒絕後任務將不會在平台上顯示。')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/tasks?id=${taskId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'cancelled'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('任務已拒絕', 'success');
+      // Refresh the pending tasks list
+      loadPendingTasks();
+    } else {
+      const error = await response.json();
+      showNotification('拒絕任務失敗：' + (error.error || '網絡錯誤'), 'error');
+    }
+  } catch (error) {
+    console.error('Error rejecting task:', error);
+    showNotification('拒絕任務時發生錯誤', 'error');
   }
 }

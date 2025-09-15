@@ -220,7 +220,7 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Task ID is required' });
       }
 
-      if (!status || !['open', 'cancelled', 'in_progress', 'completed'].includes(status)) {
+      if (!status || !['open', 'cancelled', 'in_progress', 'completed', 'pending'].includes(status)) {
         return res.status(400).json({ error: 'Valid status is required' });
       }
 
