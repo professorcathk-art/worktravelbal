@@ -280,9 +280,43 @@ const platformData = {
 let taskSkills = [];
 
 function openPostTaskModal() {
-    document.getElementById('postTaskModal').classList.remove('hidden');
-    taskSkills = []; // Reset skills
-    updateTaskSkillsDisplay();
+  if (!currentUser) {
+    openModal('login');
+    return;
+  }
+  
+  if (currentUser.type !== 'client') {
+    showNotification('只有企業客戶可以發布任務', 'error');
+    return;
+  }
+  
+  // Reset form for new task creation
+  resetTaskForm();
+  openModal('postTaskModal');
+}
+
+function resetTaskForm() {
+  // Reset all form fields
+  document.getElementById('postTaskForm').reset();
+  
+  // Reset skills
+  taskSkills = [];
+  updateTaskSkillsDisplay();
+  
+  // Reset edit mode
+  delete document.getElementById('postTaskForm').dataset.editTaskId;
+  
+  // Reset submit button text
+  const submitBtn = document.querySelector('#postTaskForm button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.textContent = '提交審核';
+  }
+  
+  // Hide custom category input
+  const customContainer = document.getElementById('customCategoryContainer');
+  if (customContainer) {
+    customContainer.style.display = 'none';
+  }
 }
 
 function addTaskSkill() {
@@ -385,8 +419,12 @@ async function handleTaskSubmission(e) {
     };
     
     try {
-        const response = await fetch('/api/tasks', {
-            method: 'POST',
+        const isEditMode = document.getElementById('postTaskForm').dataset.editTaskId;
+        const url = isEditMode ? `/api/tasks?id=${isEditMode}` : '/api/tasks';
+        const method = isEditMode ? 'PATCH' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -395,13 +433,12 @@ async function handleTaskSubmission(e) {
         
         if (response.ok) {
             const result = await response.json();
-            showNotification('任務發布成功！', 'success');
+            const message = isEditMode ? '任務更新成功！' : '任務提交審核成功！';
+            showNotification(message, 'success');
             closeModal('postTaskModal');
             
-            // Reset form
-            document.getElementById('postTaskForm').reset();
-            taskSkills = [];
-            updateTaskSkillsDisplay();
+            // Reset form for next use
+            resetTaskForm();
             
             // Refresh the marketplace to show the new task
             setTimeout(() => {
@@ -495,13 +532,22 @@ function displayMyTasks(tasks) {
         </div>
       </div>
       
-      <div style="display: flex; gap: var(--space-8);">
+      <div style="display: flex; gap: var(--space-8); flex-wrap: wrap;">
         <button class="btn btn--primary btn--sm" onclick="viewTaskApplications('${task.id}')">
           查看申請 (${task.application_count || 0})
         </button>
         <button class="btn btn--outline btn--sm" onclick="editTask('${task.id}')">
           編輯任務
         </button>
+        ${task.status === 'open' ? `
+        <button class="btn btn--danger btn--sm" onclick="stopRecruitment('${task.id}')">
+          停止招人
+        </button>
+        ` : task.status === 'cancelled' ? `
+        <button class="btn btn--success btn--sm" onclick="resumeRecruitment('${task.id}')">
+          重新招人
+        </button>
+        ` : ''}
       </div>
     </div>
   `).join('');
@@ -856,10 +902,54 @@ async function handleInterviewScheduling() {
   }
 }
 
-function editTask(taskId) {
-  // This will open the task editing modal
-  console.log('Edit task:', taskId);
-  // TODO: Implement task editing
+async function editTask(taskId) {
+  try {
+    // Fetch the task details from the API
+    const response = await fetch(`/api/tasks?id=${taskId}`);
+    if (response.ok) {
+      const tasks = await response.json();
+      if (tasks.length > 0) {
+        const task = tasks[0];
+        // Open the task creation modal in edit mode
+        openTaskEditModal(task);
+      } else {
+        showNotification('找不到任務詳情', 'error');
+      }
+    } else {
+      showNotification('載入任務詳情失敗', 'error');
+    }
+  } catch (error) {
+    console.error('Error loading task for editing:', error);
+    showNotification('載入任務詳情時發生錯誤', 'error');
+  }
+}
+
+function openTaskEditModal(task) {
+  // Populate the task creation form with existing data
+  document.getElementById('taskTitle').value = task.title || '';
+  document.getElementById('taskCategory').value = task.category_name || '';
+  document.getElementById('taskDescription').value = task.description || '';
+  document.getElementById('budgetMin').value = task.budget_min || '';
+  document.getElementById('budgetMax').value = task.budget_max || '';
+  document.getElementById('taskCurrency').value = task.currency || 'USD';
+  document.getElementById('taskDuration').value = task.duration || '';
+  document.getElementById('experienceLevel').value = task.experience_level || '中級';
+  document.getElementById('taskDeadline').value = task.deadline || '';
+  
+  // Populate skills
+  taskSkills = task.skills || [];
+  updateTaskSkillsDisplay();
+  
+  // Store the task ID for updating
+  document.getElementById('postTaskForm').dataset.editTaskId = task.id;
+  
+  // Change the submit button text
+  const submitBtn = document.querySelector('#postTaskForm button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.textContent = '更新任務';
+  }
+  
+  openModal('postTaskModal');
 }
 
 // Initialize the application
@@ -2876,6 +2966,7 @@ window.showMyTasks = showMyTasks;
 window.openPostTaskModal = openPostTaskModal;
 window.loadAndPopulateTasks = loadAndPopulateTasks;
 window.viewTaskApplications = viewTaskApplications;
+window.editTask = editTask;
 window.scheduleInterview = scheduleInterview;
 window.acceptApplication = acceptApplication;
 window.rejectApplication = rejectApplication;
@@ -3610,6 +3701,8 @@ window.handleCategoryChange = handleCategoryChange;
 window.addTaskSkill = addTaskSkill;
 window.removeTaskSkill = removeTaskSkill;
 window.selectSkillSuggestion = selectSkillSuggestion;
+window.stopRecruitment = stopRecruitment;
+window.resumeRecruitment = resumeRecruitment;
 
 // Task Creation Enhancements
 function handleCategoryChange() {
@@ -3701,4 +3794,65 @@ function selectSkillSuggestion(skill) {
   addTaskSkill(skill);
   document.getElementById('taskSkillInput').value = '';
   hideSkillSuggestions();
+}
+
+// Task recruitment management
+async function stopRecruitment(taskId) {
+  if (!confirm('確定要停止招人嗎？停止後專家將無法看到此任務。')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/tasks?id=${taskId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'cancelled'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('已停止招人', 'success');
+      // Refresh the task list
+      showMyTasks();
+    } else {
+      const error = await response.json();
+      showNotification('停止招人失敗：' + (error.error || '網絡錯誤'), 'error');
+    }
+  } catch (error) {
+    console.error('Error stopping recruitment:', error);
+    showNotification('停止招人時發生錯誤', 'error');
+  }
+}
+
+async function resumeRecruitment(taskId) {
+  if (!confirm('確定要重新開始招人嗎？')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch(`/api/tasks?id=${taskId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        status: 'open'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('已重新開始招人', 'success');
+      // Refresh the task list
+      showMyTasks();
+    } else {
+      const error = await response.json();
+      showNotification('重新招人失敗：' + (error.error || '網絡錯誤'), 'error');
+    }
+  } catch (error) {
+    console.error('Error resuming recruitment:', error);
+    showNotification('重新招人時發生錯誤', 'error');
+  }
 }
