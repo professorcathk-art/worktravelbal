@@ -22,23 +22,54 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'GET') {
-    // Get user by email
+    // Get user by email or get verified experts
     try {
-      const { email } = req.query;
+      const { email, type } = req.query;
       
-      if (!email) {
-        return res.status(400).json({ error: 'email is required' });
+      if (email) {
+        // Get user by email
+        console.log('Fetching user by email:', email);
+
+        const result = await pool.query(
+          'SELECT * FROM users WHERE email = $1',
+          [email]
+        );
+        
+        console.log('Found', result.rows.length, 'users with email');
+        res.status(200).json(result.rows);
+        
+      } else if (type === 'verified_experts') {
+        // Get verified experts for the experts section
+        console.log('Fetching verified experts');
+
+        const result = await pool.query(`
+          SELECT 
+            u.id,
+            u.email,
+            u.name,
+            u.user_type,
+            u.verified,
+            u.created_at,
+            ep.hourly_rate,
+            ep.current_location,
+            ep.timezone,
+            ep.rating,
+            ep.reviews_count,
+            ep.response_time,
+            ep.availability,
+            ep.completed_projects
+          FROM users u
+          LEFT JOIN expert_profiles ep ON u.id = ep.user_id
+          WHERE u.user_type = 'expert' AND u.verified = true
+          ORDER BY u.created_at DESC
+        `);
+        
+        console.log('Found', result.rows.length, 'verified experts');
+        res.status(200).json(result.rows);
+        
+      } else {
+        return res.status(400).json({ error: 'email or type parameter is required' });
       }
-
-      console.log('Fetching user by email:', email);
-
-      const result = await pool.query(
-        'SELECT * FROM users WHERE email = $1',
-        [email]
-      );
-      
-      console.log('Found', result.rows.length, 'users with email');
-      res.status(200).json(result.rows);
       
     } catch (error) {
       console.error('Error fetching user:', error);

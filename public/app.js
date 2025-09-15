@@ -8,6 +8,8 @@ let selectedSkills = [];
 let selectedLanguages = [];
 let applications = [];
 let savedTasks = [];
+let currentCarouselSlide = 0;
+let carouselTasks = [];
 
 // Sample data from JSON
 const platformData = {
@@ -865,10 +867,11 @@ function initializeApp() {
   // Populate initial data
   populateCategories();
   populateDestinations();
-  populateExperts();
+  loadVerifiedExperts(); // Load verified experts from API
   loadAndPopulateTasks(); // Load real tasks from API
   populateCoworkingSpaces();
   animateCounters();
+  initializeTaskCarousel();
   
   // Set up event listeners
   setupEventListeners();
@@ -1061,6 +1064,15 @@ function showSection(sectionName) {
       return;
     }
     populatePortal();
+  }
+  
+  if (sectionName === 'admin') {
+    if (!currentUser || currentUser.type !== 'admin') {
+      openModal('login');
+      showSection('home');
+      return;
+    }
+    populateAdminPortal();
   }
 }
 
@@ -1456,14 +1468,17 @@ function updateAuthState() {
   if (!authButtons) return;
   
   if (currentUser) {
+    const isAdmin = currentUser.type === 'admin';
     authButtons.innerHTML = `
       <span style="color: var(--color-text-secondary);">歡迎, ${currentUser.name}</span>
-      <button class="btn btn--outline btn--sm" id="portalBtn">管理中心</button>
+      <button class="btn btn--outline btn--sm" id="portalBtn">${isAdmin ? '管理控制台' : '管理中心'}</button>
       <button class="btn btn--outline btn--sm" id="logoutBtn">登出</button>
     `;
     
     // Add event listeners
-    document.getElementById('portalBtn').addEventListener('click', () => showSection('portal'));
+    document.getElementById('portalBtn').addEventListener('click', () => {
+      showSection(isAdmin ? 'admin' : 'portal');
+    });
     document.getElementById('logoutBtn').addEventListener('click', logout);
   } else {
     authButtons.innerHTML = `
@@ -1555,38 +1570,74 @@ function populateDestinations() {
   });
 }
 
+// Load verified experts from API
+async function loadVerifiedExperts() {
+  try {
+    console.log('Loading verified experts from API...');
+    const response = await fetch('/api/users?type=verified_experts');
+    if (response.ok) {
+      const experts = await response.json();
+      console.log('Loaded verified experts:', experts);
+      populateExperts(experts);
+    } else {
+      console.error('Failed to load verified experts, using static data');
+      populateExperts(platformData.experts);
+    }
+  } catch (error) {
+    console.error('Error loading verified experts:', error);
+    populateExperts(platformData.experts);
+  }
+}
+
 function populateExperts(experts = platformData.experts) {
   const grid = document.getElementById('expertsGrid');
   if (!grid) return;
   
   grid.innerHTML = '';
   
+  if (experts.length === 0) {
+    grid.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-20);">目前沒有已驗證的專家</p>';
+    return;
+  }
+  
   experts.forEach(expert => {
+    // Handle both API data format and static data format
+    const name = expert.name || '未知專家';
+    const title = expert.title || '專業服務提供者';
+    const avatar = expert.avatar || '👨‍💼';
+    const location = expert.current_location || expert.location || '未指定';
+    const rating = expert.rating || 0;
+    const reviews = expert.reviews_count || expert.reviews || 0;
+    const responseTime = expert.response_time || '未指定';
+    const completedProjects = expert.completed_projects || 0;
+    const hourlyRate = expert.hourly_rate || '$40-60';
+    const skills = expert.skills || ['專業服務'];
+    
     const card = document.createElement('div');
     card.className = 'expert-card';
     card.innerHTML = `
       <div class="expert-header">
-        <div class="expert-avatar">${expert.avatar}</div>
+        <div class="expert-avatar">${avatar}</div>
         <div class="expert-info">
-          <div class="expert-name">${expert.name}</div>
-          <div class="expert-title">${expert.title}</div>
+          <div class="expert-name">${name}</div>
+          <div class="expert-title">${title}</div>
         </div>
         <div class="expert-rating">
           <span class="rating-stars">⭐</span>
-          <span>${expert.rating} (${expert.reviews})</span>
+          <span>${rating} (${reviews})</span>
         </div>
       </div>
-      <div class="expert-location">📍 ${expert.location}</div>
+      <div class="expert-location">📍 ${location}</div>
       <div class="expert-details">
-        <div class="expert-detail"><strong>回應時間:</strong> ${expert.responseTime}</div>
-        <div class="expert-detail"><strong>完成項目:</strong> ${expert.completedProjects}</div>
+        <div class="expert-detail"><strong>回應時間:</strong> ${responseTime}</div>
+        <div class="expert-detail"><strong>完成項目:</strong> ${completedProjects}</div>
       </div>
       <div class="expert-skills">
-        ${expert.skills.slice(0, 3).map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
-        ${expert.skills.length > 3 ? '<span class="skill-tag">+更多</span>' : ''}
+        ${skills.slice(0, 3).map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+        ${skills.length > 3 ? '<span class="skill-tag">+更多</span>' : ''}
       </div>
       <div class="expert-footer">
-        <div class="expert-rate">${expert.hourlyRate}/時</div>
+        <div class="expert-rate">${hourlyRate}/時</div>
         <div class="expert-status status-busy">暫時約滿</div>
       </div>
     `;
@@ -1606,13 +1657,19 @@ async function loadAndPopulateTasks() {
       const tasks = await response.json();
       console.log('Loaded tasks from API:', tasks);
       populateTasks(tasks);
+      carouselTasks = tasks.slice(0, 5); // Use first 5 tasks for carousel
+      updateTaskCarousel();
     } else {
       console.error('Failed to load tasks from API, using static data');
       populateTasks(platformData.tasks);
+      carouselTasks = platformData.tasks.slice(0, 5);
+      updateTaskCarousel();
     }
   } catch (error) {
     console.error('Error loading tasks from API:', error);
     populateTasks(platformData.tasks);
+    carouselTasks = platformData.tasks.slice(0, 5);
+    updateTaskCarousel();
   }
 }
 
@@ -2355,3 +2412,298 @@ window.viewTaskApplications = viewTaskApplications;
 window.scheduleInterview = scheduleInterview;
 window.acceptApplication = acceptApplication;
 window.rejectApplication = rejectApplication;
+
+// Task Carousel Functions
+function initializeTaskCarousel() {
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      currentCarouselSlide = Math.max(0, currentCarouselSlide - 1);
+      updateTaskCarousel();
+    });
+  }
+  
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      currentCarouselSlide = Math.min(carouselTasks.length - 1, currentCarouselSlide + 1);
+      updateTaskCarousel();
+    });
+  }
+  
+  // Auto-advance carousel every 5 seconds
+  setInterval(() => {
+    if (carouselTasks.length > 1) {
+      currentCarouselSlide = (currentCarouselSlide + 1) % carouselTasks.length;
+      updateTaskCarousel();
+    }
+  }, 5000);
+}
+
+function updateTaskCarousel() {
+  const carousel = document.getElementById('taskCarousel');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  
+  if (!carousel || carouselTasks.length === 0) return;
+  
+  const task = carouselTasks[currentCarouselSlide];
+  if (!task) return;
+  
+  // Handle both API data format and static data format
+  const budget = task.budget || `$${task.budget_min}-${task.budget_max}`;
+  const company = task.company || task.client_name || '未知公司';
+  const duration = task.duration || '未指定';
+  const applications = task.application_count || task.applications || 0;
+  
+  carousel.innerHTML = `
+    <div class="carousel-slide">
+      <div class="carousel-task-card" onclick="showTaskDetails(${task.id})">
+        <div class="carousel-task-header">
+          <div>
+            <div class="carousel-task-title">${task.title}</div>
+            <div class="carousel-task-company">${company}</div>
+          </div>
+          <div class="carousel-task-budget">${budget}</div>
+        </div>
+        <div class="carousel-task-description">
+          ${task.description.length > 120 ? task.description.substring(0, 120) + '...' : task.description}
+        </div>
+        <div class="carousel-task-meta">
+          <span>⏱️ ${duration}</span>
+          <span>👥 ${applications} 人申請</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Update button states
+  if (prevBtn) {
+    prevBtn.disabled = currentCarouselSlide === 0;
+  }
+  if (nextBtn) {
+    nextBtn.disabled = currentCarouselSlide === carouselTasks.length - 1;
+  }
+}
+
+// Admin Portal Functions
+async function populateAdminPortal() {
+  const content = document.getElementById('adminContent');
+  if (!content) return;
+  
+  content.innerHTML = `
+    <div class="admin-dashboard">
+      <div class="admin-stats">
+        <div class="stat-card">
+          <div class="stat-number" id="totalUsers">0</div>
+          <div class="stat-label">總用戶數</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="verifiedUsers">0</div>
+          <div class="stat-label">已驗證用戶</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="unverifiedUsers">0</div>
+          <div class="stat-label">待驗證用戶</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="totalTasks">0</div>
+          <div class="stat-label">總任務數</div>
+        </div>
+      </div>
+      
+      <div class="admin-sections">
+        <div class="admin-section">
+          <h3>用戶管理</h3>
+          <div class="admin-actions">
+            <button class="btn btn--primary" onclick="loadUnverifiedUsers()">查看待驗證用戶</button>
+            <button class="btn btn--outline" onclick="loadAllUsers()">查看所有用戶</button>
+          </div>
+          <div id="userList" class="user-list">
+            <!-- Users will be loaded here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Load initial stats
+  loadAdminStats();
+}
+
+async function loadAdminStats() {
+  try {
+    const response = await fetch('/api/admin?admin_email=professor.cat.hk@gmail.com&action=users');
+    if (response.ok) {
+      const users = await response.json();
+      const totalUsers = users.length;
+      const verifiedUsers = users.filter(u => u.verified).length;
+      const unverifiedUsers = totalUsers - verifiedUsers;
+      
+      document.getElementById('totalUsers').textContent = totalUsers;
+      document.getElementById('verifiedUsers').textContent = verifiedUsers;
+      document.getElementById('unverifiedUsers').textContent = unverifiedUsers;
+    }
+  } catch (error) {
+    console.error('Error loading admin stats:', error);
+  }
+}
+
+async function loadUnverifiedUsers() {
+  try {
+    const response = await fetch('/api/admin?admin_email=professor.cat.hk@gmail.com&action=unverified');
+    if (response.ok) {
+      const users = await response.json();
+      displayUserList(users, 'unverified');
+    }
+  } catch (error) {
+    console.error('Error loading unverified users:', error);
+  }
+}
+
+async function loadAllUsers() {
+  try {
+    const response = await fetch('/api/admin?admin_email=professor.cat.hk@gmail.com&action=users');
+    if (response.ok) {
+      const users = await response.json();
+      displayUserList(users, 'all');
+    }
+  } catch (error) {
+    console.error('Error loading all users:', error);
+  }
+}
+
+function displayUserList(users, type) {
+  const userList = document.getElementById('userList');
+  if (!userList) return;
+  
+  if (users.length === 0) {
+    userList.innerHTML = '<p style="text-align: center; color: var(--color-text-secondary); padding: var(--space-20);">沒有找到用戶</p>';
+    return;
+  }
+  
+  userList.innerHTML = users.map(user => `
+    <div class="user-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); margin-bottom: var(--space-12);">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+        <div>
+          <h4 style="margin: 0; color: var(--color-text-primary);">${user.name}</h4>
+          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">${user.email}</div>
+          <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">類型: ${user.user_type}</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="user-status" style="padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm); background: ${user.verified ? 'var(--color-success)' : 'var(--color-warning)'}; color: white; margin-bottom: var(--space-8);">
+            ${user.verified ? '已驗證' : '待驗證'}
+          </div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+            ${new Date(user.created_at).toLocaleDateString('zh-TW')}
+          </div>
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-12); margin-bottom: var(--space-16);">
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">檔案完整度</div>
+          <div style="font-weight: var(--font-weight-medium);">${user.profile_complete || 0}%</div>
+        </div>
+        ${user.hourly_rate ? `
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">時薪</div>
+          <div style="font-weight: var(--font-weight-medium);">${user.hourly_rate}</div>
+        </div>
+        ` : ''}
+        ${user.current_location ? `
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">位置</div>
+          <div style="font-weight: var(--font-weight-medium);">${user.current_location}</div>
+        </div>
+        ` : ''}
+        ${user.rating ? `
+        <div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">評分</div>
+          <div style="font-weight: var(--font-weight-medium);">${user.rating}</div>
+        </div>
+        ` : ''}
+      </div>
+      
+      <div style="display: flex; gap: var(--space-8); justify-content: flex-end;">
+        ${!user.verified ? `
+        <button class="btn btn--primary btn--sm" onclick="verifyUser('${user.id}')">
+          驗證用戶
+        </button>
+        ` : `
+        <button class="btn btn--outline btn--sm" onclick="unverifyUser('${user.id}')">
+          取消驗證
+        </button>
+        `}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function verifyUser(userId) {
+  try {
+    const response = await fetch('/api/admin', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        action: 'verify',
+        notes: 'User verified by admin'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('用戶已驗證！', 'success');
+      loadUnverifiedUsers(); // Refresh the list
+      loadAdminStats(); // Refresh stats
+    } else {
+      const error = await response.json();
+      showNotification('驗證失敗：' + (error.error || '請稍後再試'), 'error');
+    }
+  } catch (error) {
+    console.error('Error verifying user:', error);
+    showNotification('驗證失敗：網絡錯誤', 'error');
+  }
+}
+
+async function unverifyUser(userId) {
+  if (!confirm('確定要取消此用戶的驗證嗎？')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/admin', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        action: 'unverify',
+        notes: 'User unverified by admin'
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('用戶驗證已取消', 'info');
+      loadAllUsers(); // Refresh the list
+      loadAdminStats(); // Refresh stats
+    } else {
+      const error = await response.json();
+      showNotification('操作失敗：' + (error.error || '請稍後再試'), 'error');
+    }
+  } catch (error) {
+    console.error('Error unverifying user:', error);
+    showNotification('操作失敗：網絡錯誤', 'error');
+  }
+}
+
+// Global functions for admin
+window.populateAdminPortal = populateAdminPortal;
+window.loadUnverifiedUsers = loadUnverifiedUsers;
+window.loadAllUsers = loadAllUsers;
+window.verifyUser = verifyUser;
+window.unverifyUser = unverifyUser;

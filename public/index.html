@@ -58,29 +58,14 @@
                             </div>
                         </div>
                         <div class="hero-visual">
-                            <div class="nomad-card">
-                                <div class="nomad-header">
-                                    <div class="nomad-avatar">🏖️</div>
-                                    <div class="nomad-info">
-                                        <div class="nomad-name">數位遊牧工作者</div>
-                                        <div class="nomad-location">📍 峇里島工作中</div>
-                                    </div>
-                                    <div class="nomad-status online">線上</div>
+                            <div class="task-carousel-container">
+                                <h3 style="text-align: center; margin-bottom: var(--space-20); color: var(--color-text);">熱門任務</h3>
+                                <div class="task-carousel" id="taskCarousel">
+                                    <!-- Tasks will be populated by JavaScript -->
                                 </div>
-                                <div class="nomad-content">
-                                    <div class="project-preview">
-                                        <div class="project-title">網站開發項目</div>
-                                        <div class="project-progress">
-                                            <div class="progress-bar">
-                                                <div class="progress-fill" style="width: 75%"></div>
-                                            </div>
-                                            <span>75% 完成</span>
-                                        </div>
-                                    </div>
-                                    <div class="earnings-preview">
-                                        <span class="earnings-label">本月收入</span>
-                                        <span class="earnings-amount">$2,340</span>
-                                    </div>
+                                <div class="carousel-controls">
+                                    <button class="carousel-btn" id="prevBtn">‹</button>
+                                    <button class="carousel-btn" id="nextBtn">›</button>
                                 </div>
                             </div>
                         </div>
@@ -318,6 +303,22 @@
                 </div>
                 <div class="portal-content" id="portalContent">
                     <!-- Portal content will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Portal -->
+        <section id="admin" class="section">
+            <div class="container">
+                <div class="portal-header">
+                    <h1>管理員控制台</h1>
+                    <div class="user-info">
+                        <span id="adminWelcome">歡迎，管理員！</span>
+                        <button class="btn btn--outline btn--sm" onclick="logout()">登出</button>
+                    </div>
+                </div>
+                <div class="admin-content" id="adminContent">
+                    <!-- Admin content will be populated by JavaScript -->
                 </div>
             </div>
         </section>
