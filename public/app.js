@@ -522,7 +522,7 @@ function displayMyTasks(tasks) {
         </div>
         <div>
           <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">申請數</div>
-          <div style="font-weight: var(--font-weight-medium); color: var(--color-primary);">${task.application_count || 0}</div>
+          <div style="font-weight: var(--font-weight-medium); color: var(--color-primary);">${task.applications_count || task.application_count || 0}</div>
         </div>
         <div>
           <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">發布時間</div>
@@ -532,7 +532,7 @@ function displayMyTasks(tasks) {
       
       <div style="display: flex; gap: var(--space-8); flex-wrap: wrap;">
         <button class="btn btn--primary btn--sm" onclick="viewTaskApplications('${task.id}')">
-          查看申請 (${task.application_count || 0})
+          查看申請 (${task.applications_count || task.application_count || 0})
         </button>
         <button class="btn btn--outline btn--sm" onclick="editTask('${task.id}')">
           編輯任務
@@ -1127,7 +1127,7 @@ function setupEventListeners() {
   }
 
   // Filter changes
-  ['skillFilter', 'locationFilter', 'rateFilter'].forEach(filterId => {
+  ['skillFilter', 'languageFilter', 'rateFilter'].forEach(filterId => {
     const filter = document.getElementById(filterId);
     if (filter) {
       filter.addEventListener('change', searchExperts);
@@ -1142,7 +1142,7 @@ function setupEventListeners() {
   });
 
   // Expert filter event listeners
-  ['skillFilter', 'locationFilter', 'rateFilter'].forEach(filterId => {
+  ['skillFilter', 'languageFilter', 'rateFilter'].forEach(filterId => {
     const filter = document.getElementById(filterId);
     if (filter) {
       filter.addEventListener('change', searchExperts);
@@ -1262,6 +1262,23 @@ function setupFormHandlers() {
           this.value = '';
         }
       }
+    });
+  }
+
+  // Availability toggle
+  const availabilityToggle = document.getElementById('availabilityToggle');
+  if (availabilityToggle) {
+    availabilityToggle.addEventListener('change', function(e) {
+      toggleExpertAvailability(e.target.checked);
+    });
+  }
+
+  // Message form
+  const messageForm = document.getElementById('messageForm');
+  if (messageForm) {
+    messageForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      handleMessageSubmission(e);
     });
   }
 
@@ -1944,7 +1961,7 @@ async function loadVerifiedExperts(filters = {}) {
     // Build query parameters
     const params = new URLSearchParams({ type: 'verified_experts' });
     if (filters.skill) params.append('skill_filter', filters.skill);
-    if (filters.location) params.append('location_filter', filters.location);
+    if (filters.language) params.append('language_filter', filters.language);
     if (filters.rate) params.append('rate_filter', filters.rate);
     
     const response = await fetch(`/api/users?${params.toString()}`);
@@ -2063,6 +2080,11 @@ function populateExperts(experts = platformData.experts) {
         <div class="expert-status ${availabilityStatus === 'available' ? 'status-available' : 'status-busy'}">
           ${availabilityStatus === 'available' ? '可接案' : '暫時約滿'}
         </div>
+        ${currentUser && currentUser.type === 'client' && currentUser.verified ? `
+        <button class="btn btn--outline btn--sm" onclick="event.stopPropagation(); openMessageModal('${expert.id}', '${name}')" style="margin-top: var(--space-8);">
+          留言
+        </button>
+        ` : ''}
       </div>
     `;
     
@@ -2120,7 +2142,7 @@ function populateTasks(tasks = platformData.tasks) {
     const experienceLevel = task.experience_level || task.experienceLevel || '未指定';
     const deadline = task.deadline || '未指定';
     const skills = task.skills || [];
-    const applications = task.application_count || task.applications || 0;
+    const applications = task.applications_count || task.application_count || task.applications || 0;
     
     card.innerHTML = `
       <div class="task-header">
@@ -2184,13 +2206,13 @@ function populateCoworkingSpaces() {
 async function searchExperts() {
   const searchTerm = document.getElementById('expertSearch')?.value.toLowerCase() || '';
   const skillFilter = document.getElementById('skillFilter')?.value || '';
-  const locationFilter = document.getElementById('locationFilter')?.value || '';
+  const languageFilter = document.getElementById('languageFilter')?.value || '';
   const rateFilter = document.getElementById('rateFilter')?.value || '';
   
   // Build filters object for API call
   const filters = {};
   if (skillFilter) filters.skill = skillFilter;
-  if (locationFilter) filters.location = locationFilter;
+  if (languageFilter) filters.language = languageFilter;
   if (rateFilter) filters.rate = rateFilter;
   
   // Load experts with filters from API
@@ -2883,10 +2905,6 @@ function populateClientPortal(content) {
               <div id="totalTasks" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-warning);">0</div>
               <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">發布任務</div>
             </div>
-            <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-4); border-radius: var(--radius-base);">
-              <div id="activeProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-error);">100+</div>
-              <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">進行中項目</div>
-            </div>
           </div>
         </div>
       </div>
@@ -3011,7 +3029,7 @@ function updateTaskCarousel() {
   const budget = task.budget || `$${task.budget_min}-${task.budget_max}`;
   const company = task.company || task.client_name || '未知公司';
   const duration = task.duration || '未指定';
-  const applications = task.application_count || task.applications || 0;
+  const applications = task.applications_count || task.application_count || task.applications || 0;
   
   carousel.innerHTML = `
     <div class="carousel-slide">
@@ -3637,6 +3655,98 @@ async function handleExpertProfileUpdate(event) {
   }
 }
 
+// Expert availability toggle
+async function toggleExpertAvailability(isAvailable) {
+  if (!currentUser || currentUser.type !== 'expert') return;
+  
+  try {
+    const response = await fetch(`/api/users?id=${currentUser.id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        availability_status: isAvailable ? 'available' : 'busy'
+      })
+    });
+    
+    if (response.ok) {
+      // Update current user
+      currentUser.availability_status = isAvailable ? 'available' : 'busy';
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      
+      // Update status text
+      const statusText = document.getElementById('statusText');
+      if (statusText) {
+        statusText.textContent = isAvailable ? '可接任務' : '暫時約滿';
+      }
+      
+      showNotification(`狀態已更新為：${isAvailable ? '可接任務' : '暫時約滿'}`, 'success');
+      
+      // Refresh expert marketplace if it's currently displayed
+      if (document.getElementById('expertMarketplace') && !document.getElementById('expertMarketplace').classList.contains('hidden')) {
+        loadVerifiedExperts();
+      }
+    } else {
+      const error = await response.json();
+      showNotification('更新狀態失敗：' + (error.error || '網絡錯誤'), 'error');
+    }
+  } catch (error) {
+    console.error('Error toggling availability:', error);
+    showNotification('更新狀態時發生錯誤', 'error');
+  }
+}
+
+// Message functionality
+function openMessageModal(expertId, expertName) {
+  if (!currentUser || currentUser.type !== 'client' || !currentUser.verified) {
+    showNotification('只有已驗證的企業用戶才能發送訊息', 'error');
+    return;
+  }
+  
+  document.getElementById('messageRecipient').value = expertName;
+  document.getElementById('messageContent').value = '';
+  document.getElementById('messageModal').dataset.expertId = expertId;
+  openModal('messageModal');
+}
+
+async function handleMessageSubmission(event) {
+  event.preventDefault();
+  
+  const expertId = document.getElementById('messageModal').dataset.expertId;
+  const content = document.getElementById('messageContent').value.trim();
+  
+  if (!content) {
+    showNotification('請輸入訊息內容', 'error');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        expert_id: expertId,
+        client_id: currentUser.id,
+        content: content
+      })
+    });
+    
+    if (response.ok) {
+      showNotification('訊息已發送成功', 'success');
+      closeModal('messageModal');
+    } else {
+      const error = await response.json();
+      showNotification('發送訊息失敗：' + (error.error || '網絡錯誤'), 'error');
+    }
+  } catch (error) {
+    console.error('Error sending message:', error);
+    showNotification('發送訊息時發生錯誤', 'error');
+  }
+}
+
 // Expert skills and languages management
 function addExpertSkill(skill) {
   if (!currentUser.skills) currentUser.skills = [];
@@ -3709,6 +3819,9 @@ window.openCorporateProfileModal = openCorporateProfileModal;
 window.handleCorporateProfileUpdate = handleCorporateProfileUpdate;
 window.openExpertProfileModal = openExpertProfileModal;
 window.handleExpertProfileUpdate = handleExpertProfileUpdate;
+window.toggleExpertAvailability = toggleExpertAvailability;
+window.openMessageModal = openMessageModal;
+window.handleMessageSubmission = handleMessageSubmission;
 window.addExpertSkill = addExpertSkill;
 window.removeExpertSkill = removeExpertSkill;
 window.addExpertLanguage = addExpertLanguage;

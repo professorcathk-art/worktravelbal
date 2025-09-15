@@ -178,11 +178,15 @@
                                 <option value="數位行銷">數位行銷</option>
                                 <option value="內容創作">內容創作</option>
                             </select>
-                            <select id="locationFilter" class="form-control">
-                                <option value="">所有地點</option>
-                                <option value="亞洲">亞洲</option>
-                                <option value="歐洲">歐洲</option>
-                                <option value="美洲">美洲</option>
+                            <select id="languageFilter" class="form-control">
+                                <option value="">所有語言</option>
+                                <option value="中文">中文</option>
+                                <option value="英文">英文</option>
+                                <option value="日文">日文</option>
+                                <option value="韓文">韓文</option>
+                                <option value="法文">法文</option>
+                                <option value="德文">德文</option>
+                                <option value="西班牙文">西班牙文</option>
                             </select>
                             <select id="rateFilter" class="form-control">
                                 <option value="">價格範圍</option>
@@ -775,6 +779,33 @@
                     <div class="form-buttons">
                         <button type="button" class="btn btn--outline" onclick="closeModal('corporateProfileModal')">取消</button>
                         <button type="submit" class="btn btn--primary">儲存變更</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Modal -->
+    <div class="modal hidden" id="messageModal">
+        <div class="modal-backdrop" onclick="closeModal('messageModal')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="messageModalTitle">發送訊息</h3>
+                <button class="modal-close" onclick="closeModal('messageModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="messageForm">
+                    <div class="form-group">
+                        <label class="form-label">收件人</label>
+                        <input type="text" class="form-control" id="messageRecipient" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">訊息內容</label>
+                        <textarea class="form-control" id="messageContent" rows="4" placeholder="請輸入您的訊息..." required></textarea>
+                    </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn btn--outline" onclick="closeModal('messageModal')">取消</button>
+                        <button type="submit" class="btn btn--primary">發送</button>
                     </div>
                 </form>
             </div>

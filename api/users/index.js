@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
         // Get verified experts for the experts section
         console.log('Fetching verified experts');
         
-        const { skill_filter, location_filter, rate_filter } = req.query;
+        const { skill_filter, language_filter, rate_filter } = req.query;
         
         let query = `
           SELECT 
@@ -79,11 +79,15 @@ module.exports = async (req, res) => {
           queryParams.push(skill_filter);
         }
         
-        // Add location filter
-        if (location_filter) {
+        // Add language filter
+        if (language_filter) {
           paramCount++;
-          query += ` AND ep.current_location ILIKE $${paramCount}`;
-          queryParams.push(`%${location_filter}%`);
+          query += ` AND EXISTS (
+            SELECT 1 FROM expert_languages el 
+            JOIN languages l ON el.language_id = l.id 
+            WHERE el.expert_id = u.id AND l.name = $${paramCount}
+          )`;
+          queryParams.push(language_filter);
         }
         
         // Add rate filter
