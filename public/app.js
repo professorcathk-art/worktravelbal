@@ -277,8 +277,6 @@ const platformData = {
 };
 
 // Task posting functionality
-let taskSkills = [];
-
 function openPostTaskModal() {
   if (!currentUser) {
     openModal('login');
@@ -3938,3 +3936,8 @@ async function rejectTask(taskId) {
     showNotification('拒絕任務時發生錯誤', 'error');
   }
 }
+
+// Ensure all critical functions are available globally
+window.showSection = showSection;
+window.openModal = openModal;
+window.closeModal = closeModal;
