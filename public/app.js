@@ -1310,6 +1310,24 @@ function setupFormHandlers() {
       handleMessageSubmission(e);
     });
   }
+  
+  // Forgot password form
+  const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+  if (forgotPasswordForm) {
+    forgotPasswordForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      handleForgotPassword(e);
+    });
+  }
+  
+  // Email code login form
+  const emailCodeLoginForm = document.getElementById('emailCodeLoginForm');
+  if (emailCodeLoginForm) {
+    emailCodeLoginForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      handleEmailCodeLogin(e);
+    });
+  }
 
   // Task skills input with hashtag functionality
   const taskSkillInput = document.getElementById('taskSkillInput');
@@ -1502,18 +1520,38 @@ function setupSkillsInput() {
 }
 
 function setupLanguagesInput() {
-  const languageInput = document.getElementById('languageInput');
-  if (languageInput) {
-    languageInput.addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const language = this.value.trim();
-        if (language) {
-          addLanguage(language);
-          this.value = '';
-        }
-      }
+  // Handle checkbox language selection
+  const languageCheckboxes = document.querySelectorAll('input[name="languages"]');
+  languageCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      updateLanguageTags();
     });
+  });
+  
+  // Initialize language tags display
+  updateLanguageTags();
+}
+
+function updateLanguageTags() {
+  const selectedLanguages = Array.from(document.querySelectorAll('input[name="languages"]:checked'))
+    .map(checkbox => checkbox.value);
+  
+  const tagsContainer = document.getElementById('languagesTags');
+  if (!tagsContainer) return;
+  
+  tagsContainer.innerHTML = selectedLanguages.map(language => `
+    <span class="language-tag">
+      ${language}
+      <span class="remove" onclick="removeLanguage('${language}')">&times;</span>
+    </span>
+  `).join('');
+}
+
+function removeLanguage(language) {
+  const checkbox = document.querySelector(`input[name="languages"][value="${language}"]`);
+  if (checkbox) {
+    checkbox.checked = false;
+    updateLanguageTags();
   }
 }
 
@@ -1614,6 +1652,10 @@ async function handleLogin() {
       }
       
       // Set up current user with additional demo data
+      // Get selected languages from checkboxes
+      const selectedLanguages = Array.from(document.querySelectorAll('input[name="languages"]:checked'))
+        .map(checkbox => checkbox.value);
+      
       currentUser = {
         id: user.id,
         name: user.name,
@@ -1621,7 +1663,7 @@ async function handleLogin() {
         type: user.user_type,
         verified: user.verified || false,
         skills: [],
-        languages: [],
+        languages: selectedLanguages,
         applications: [],
         profileComplete: 60,
         location: "台北, 台灣",
@@ -1672,7 +1714,9 @@ async function handleRegister() {
   const name = document.getElementById('registerName').value;
   const email = document.getElementById('registerEmail').value;
   const password = document.getElementById('registerPassword').value;
-  const phone = document.getElementById('registerPhone').value;
+  const countryCode = document.getElementById('registerCountryCode').value;
+  const phoneNumber = document.getElementById('registerPhone').value;
+  const phone = countryCode + phoneNumber;
   const bio = document.getElementById('bio').value;
   
   if (!name || !email || !password) {
@@ -1719,6 +1763,10 @@ async function handleRegister() {
       const dbUser = result.user;
       
       // Set up current user with additional demo data
+      // Get selected languages from checkboxes
+      const selectedLanguagesFromCheckboxes = Array.from(document.querySelectorAll('input[name="languages"]:checked'))
+        .map(checkbox => checkbox.value);
+      
       const newUser = {
         id: dbUser.id,
         name: dbUser.name,
@@ -1728,7 +1776,7 @@ async function handleRegister() {
         verified: dbUser.verified,
         bio: dbUser.bio,
         skills: [...selectedSkills],
-        languages: [...selectedLanguages],
+        languages: selectedLanguagesFromCheckboxes,
         profileComplete: calculateProfileCompletion(),
         applications: [],
         savedTasks: []
@@ -1743,6 +1791,8 @@ async function handleRegister() {
         newUser.responseTime = "新用戶";
         newUser.availability = "可接案";
       } else {
+        newUser.contactName = document.getElementById('contactName').value;
+        newUser.companyName = document.getElementById('companyName').value;
         newUser.companySize = document.getElementById('companySize').value;
         newUser.industry = document.getElementById('industry').value;
         newUser.postedTasks = [];
@@ -3053,7 +3103,7 @@ async function handleTaskApplication() {
     
     if (response.ok) {
       const result = await response.json();
-      showNotification('申請已提交！', 'success');
+      showApplicationSuccessPopup();
       closeModal('applicationModal');
       
       // Also store locally for immediate UI updates
@@ -3536,6 +3586,239 @@ window.openMessageThread = openMessageThread;
 window.sendThreadMessage = sendThreadMessage;
 window.closeMessagePopup = closeMessagePopup;
 window.sendPopupMessage = sendPopupMessage;
+window.viewProjectProgress = viewProjectProgress;
+window.addProjectProgress = addProjectProgress;
+window.removeLanguage = removeLanguage;
+window.removePortfolioFile = removePortfolioFile;
+window.showForgotPasswordModal = showForgotPasswordModal;
+window.showEmailCodeLoginModal = showEmailCodeLoginModal;
+window.sendEmailCode = sendEmailCode;
+
+// Portfolio file handling
+function handlePortfolioFileUpload(event) {
+  const files = Array.from(event.target.files);
+  const maxFiles = 5;
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  
+  if (!currentUser.portfolioFiles) {
+    currentUser.portfolioFiles = [];
+  }
+  
+  // Check file count limit
+  if (currentUser.portfolioFiles.length + files.length > maxFiles) {
+    showNotification(`最多只能上傳 ${maxFiles} 個檔案`, 'error');
+    return;
+  }
+  
+  files.forEach(file => {
+    // Check file size
+    if (file.size > maxSize) {
+      showNotification(`檔案 ${file.name} 超過 10MB 限制`, 'error');
+      return;
+    }
+    
+    // Check file type
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.gif'];
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    if (!allowedTypes.includes(fileExtension)) {
+      showNotification(`檔案 ${file.name} 格式不支援`, 'error');
+      return;
+    }
+    
+    // Add file to portfolio
+    const portfolioFile = {
+      id: Date.now() + Math.random(),
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      file: file // Store the actual file object
+    };
+    
+    currentUser.portfolioFiles.push(portfolioFile);
+  });
+  
+  // Update display
+  updatePortfolioDisplay();
+  
+  // Clear input
+  event.target.value = '';
+}
+
+function updatePortfolioDisplay() {
+  const portfolioContainer = document.getElementById('portfolioFiles');
+  if (!portfolioContainer) return;
+  
+  portfolioContainer.innerHTML = '';
+  if (currentUser.portfolioFiles && currentUser.portfolioFiles.length > 0) {
+    currentUser.portfolioFiles.forEach(file => {
+      const fileElement = document.createElement('div');
+      fileElement.className = 'portfolio-file';
+      fileElement.innerHTML = `
+        <div class="portfolio-file-info">
+          <div class="portfolio-file-icon">${getFileIcon(file.type)}</div>
+          <div class="portfolio-file-details">
+            <div class="portfolio-file-name">${file.name}</div>
+            <div class="portfolio-file-size">${formatFileSize(file.size)}</div>
+          </div>
+        </div>
+        <button class="portfolio-file-remove" onclick="removePortfolioFile('${file.id}')">移除</button>
+      `;
+      portfolioContainer.appendChild(fileElement);
+    });
+  }
+}
+
+function removePortfolioFile(fileId) {
+  if (currentUser.portfolioFiles) {
+    currentUser.portfolioFiles = currentUser.portfolioFiles.filter(file => file.id !== fileId);
+    updatePortfolioDisplay();
+  }
+}
+
+function getFileIcon(fileType) {
+  if (fileType.includes('pdf')) return '📄';
+  if (fileType.includes('word') || fileType.includes('document')) return '📝';
+  if (fileType.includes('image')) return '🖼️';
+  return '📎';
+}
+
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Application success popup
+function showApplicationSuccessPopup() {
+  const popup = document.createElement('div');
+  popup.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.5); z-index: 10000; 
+    display: flex; align-items: center; justify-content: center;
+  `;
+  popup.innerHTML = `
+    <div style="background: white; border-radius: 12px; padding: 30px; max-width: 500px; width: 90%; text-align: center; position: relative;">
+      <div style="font-size: 48px; margin-bottom: 20px;">✅</div>
+      <h3 style="margin-bottom: 16px; color: var(--color-success);">申請已成功提交！</h3>
+      <p style="margin-bottom: 20px; color: var(--color-text-secondary); line-height: 1.6;">
+        您的申請已經成功提交給雇主。我們會通知您申請的進展情況。
+      </p>
+      <div style="background: var(--color-bg-1); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <p style="margin: 0; font-size: 14px; color: var(--color-text-secondary);">
+          💡 <strong>小提示：</strong> 您可以在「我的申請」中查看申請狀態，並在「我的訊息」中與雇主溝通。
+        </p>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove()" style="background: var(--color-primary); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px;">
+        知道了
+      </button>
+    </div>
+  `;
+  document.body.appendChild(popup);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (popup.parentElement) {
+      popup.remove();
+    }
+  }, 5000);
+}
+
+// Forgot password and email code login functions
+function showForgotPasswordModal() {
+  closeModal('loginModal');
+  openModal('forgotPasswordModal');
+}
+
+function showEmailCodeLoginModal() {
+  closeModal('loginModal');
+  openModal('emailCodeLoginModal');
+}
+
+async function sendEmailCode() {
+  const email = document.getElementById('emailCodeEmail').value;
+  
+  if (!email) {
+    showNotification('請輸入電子郵件地址', 'error');
+    return;
+  }
+  
+  try {
+    // Simulate sending email code
+    showNotification('驗證碼已發送到您的電子郵件', 'success');
+    
+    // In a real app, this would make an API call to send the code
+    // For demo purposes, we'll just show a success message
+  } catch (error) {
+    showNotification('發送驗證碼失敗，請稍後再試', 'error');
+  }
+}
+
+async function handleForgotPassword(event) {
+  event.preventDefault();
+  
+  const email = document.getElementById('forgotPasswordEmail').value;
+  
+  if (!email) {
+    showNotification('請輸入電子郵件地址', 'error');
+    return;
+  }
+  
+  try {
+    // Simulate sending reset password email
+    showNotification('重設密碼連結已發送到您的電子郵件', 'success');
+    closeModal('forgotPasswordModal');
+    
+    // In a real app, this would make an API call to send the reset link
+  } catch (error) {
+    showNotification('發送重設密碼連結失敗，請稍後再試', 'error');
+  }
+}
+
+async function handleEmailCodeLogin(event) {
+  event.preventDefault();
+  
+  const email = document.getElementById('emailCodeEmail').value;
+  const code = document.getElementById('emailCode').value;
+  
+  if (!email || !code) {
+    showNotification('請填寫所有欄位', 'error');
+    return;
+  }
+  
+  if (code.length !== 6) {
+    showNotification('驗證碼必須是6位數', 'error');
+    return;
+  }
+  
+  try {
+    // Simulate email code login
+    // In a real app, this would verify the code with the server
+    if (code === '123456') { // Demo code
+      showNotification('登入成功！', 'success');
+      closeModal('emailCodeLoginModal');
+      
+      // Simulate successful login
+      const demoUser = {
+        id: 'demo_user_' + Date.now(),
+        name: 'Demo User',
+        email: email,
+        type: 'expert',
+        verified: true
+      };
+      
+      currentUser = demoUser;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      updateAuthState();
+      showSection('portal');
+    } else {
+      showNotification('驗證碼錯誤，請重新輸入', 'error');
+    }
+  } catch (error) {
+    showNotification('登入失敗，請稍後再試', 'error');
+  }
+}
 
 // Task Carousel Functions
 function initializeTaskCarousel() {
@@ -4140,6 +4423,35 @@ function openExpertProfileModal() {
           });
         }
       }
+      
+      // Populate portfolio files
+      const portfolioContainer = document.getElementById('portfolioFiles');
+      if (portfolioContainer) {
+        portfolioContainer.innerHTML = '';
+        if (currentUser.portfolioFiles && currentUser.portfolioFiles.length > 0) {
+          currentUser.portfolioFiles.forEach(file => {
+            const fileElement = document.createElement('div');
+            fileElement.className = 'portfolio-file';
+            fileElement.innerHTML = `
+              <div class="portfolio-file-info">
+                <div class="portfolio-file-icon">📄</div>
+                <div class="portfolio-file-details">
+                  <div class="portfolio-file-name">${file.name}</div>
+                  <div class="portfolio-file-size">${formatFileSize(file.size)}</div>
+                </div>
+              </div>
+              <button class="portfolio-file-remove" onclick="removePortfolioFile('${file.id}')">移除</button>
+            `;
+            portfolioContainer.appendChild(fileElement);
+          });
+        }
+      }
+      
+      // Setup portfolio file input handler
+      const portfolioInput = document.getElementById('expertPortfolio');
+      if (portfolioInput) {
+        portfolioInput.addEventListener('change', handlePortfolioFileUpload);
+      }
     }
     
     console.log('About to open expert profile modal');
@@ -4308,6 +4620,9 @@ async function openProjectStatsModal() {
       document.getElementById('completedProjects').textContent = completedProjects;
       document.getElementById('totalApplications').textContent = totalApplications;
       
+      // Load project progress tracking
+      loadProjectProgressTracking(tasks);
+      
       console.log('Opening project stats modal');
       openModal('projectStatsModal');
     } else {
@@ -4318,6 +4633,201 @@ async function openProjectStatsModal() {
     console.error('Error loading project statistics:', error);
     showNotification('載入項目統計時發生錯誤', 'error');
   }
+}
+
+// Load project progress tracking
+function loadProjectProgressTracking(tasks) {
+  const progressContainer = document.getElementById('projectProgressList');
+  if (!progressContainer) return;
+  
+  if (tasks.length === 0) {
+    progressContainer.innerHTML = '<p style="color: var(--color-text-secondary); text-align: center;">您還沒有任何項目</p>';
+    return;
+  }
+  
+  progressContainer.innerHTML = tasks.map(task => {
+    const progressUpdates = JSON.parse(localStorage.getItem(`projectProgress_${task.id}`) || '[]');
+    const latestUpdate = progressUpdates[progressUpdates.length - 1];
+    
+    return `
+      <div class="project-progress-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border);">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+          <div>
+            <h5 style="margin: 0 0 var(--space-4) 0; font-size: var(--font-size-lg);">${task.title}</h5>
+            <p style="margin: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm);">狀態: ${getStatusText(task.status)}</p>
+            ${latestUpdate ? `<p style="margin: var(--space-4) 0 0 0; color: var(--color-text-secondary); font-size: var(--font-size-sm);">最新進度: ${latestUpdate.progress}%</p>` : ''}
+          </div>
+          <div style="display: flex; gap: var(--space-8);">
+            <button onclick="viewProjectProgress('${task.id}')" class="btn btn--outline btn--sm">查看進度</button>
+            <button onclick="addProjectProgress('${task.id}')" class="btn btn--primary btn--sm">更新進度</button>
+          </div>
+        </div>
+        ${latestUpdate ? `
+          <div style="margin-top: var(--space-12);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-4);">
+              <span style="font-size: var(--font-size-sm);">進度</span>
+              <span style="font-size: var(--font-size-sm);">${latestUpdate.progress}%</span>
+            </div>
+            <div style="background: var(--color-bg-2); border-radius: var(--radius-sm); height: 8px;">
+              <div style="background: var(--color-primary); height: 100%; border-radius: var(--radius-sm); width: ${latestUpdate.progress}%;"></div>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// View project progress
+function viewProjectProgress(taskId) {
+  const progressUpdates = JSON.parse(localStorage.getItem(`projectProgress_${taskId}`) || '[]');
+  
+  if (progressUpdates.length === 0) {
+    showNotification('此項目還沒有進度記錄', 'info');
+    return;
+  }
+  
+  // Create progress view modal content
+  const progressContent = progressUpdates.map(update => `
+    <div style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); margin-bottom: var(--space-12);">
+      <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-8);">
+        <div style="font-weight: var(--font-weight-semibold);">進度: ${update.progress}%</div>
+        <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+          ${new Date(update.timestamp).toLocaleString('zh-TW')}
+        </div>
+      </div>
+      <div style="margin-bottom: var(--space-8);">
+        <div style="background: var(--color-bg-2); border-radius: var(--radius-sm); height: 8px;">
+          <div style="background: var(--color-primary); height: 100%; border-radius: var(--radius-sm); width: ${update.progress}%;"></div>
+        </div>
+      </div>
+      <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+        <strong>更新說明:</strong><br>
+        ${update.description || '無說明'}
+      </div>
+      ${update.attachments && update.attachments.length > 0 ? `
+        <div style="margin-top: var(--space-8);">
+          <strong>附件:</strong><br>
+          ${update.attachments.map(file => `<div style="color: var(--color-primary); font-size: var(--font-size-sm);">📎 ${file.name}</div>`).join('')}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+  
+  // Show in a simple popup
+  const popup = document.createElement('div');
+  popup.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.5); z-index: 10000; 
+    display: flex; align-items: center; justify-content: center;
+  `;
+  popup.innerHTML = `
+    <div style="background: white; border-radius: 8px; padding: 20px; max-width: 600px; max-height: 80vh; overflow-y: auto; position: relative;">
+      <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+      <h3 style="margin-bottom: 20px;">項目進度記錄</h3>
+      <div>${progressContent}</div>
+    </div>
+  `;
+  document.body.appendChild(popup);
+}
+
+// Add project progress
+function addProjectProgress(taskId) {
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  if (!currentUser) {
+    showNotification('請先登入', 'error');
+    return;
+  }
+  
+  // Create progress update form
+  const form = document.createElement('div');
+  form.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.5); z-index: 10000; 
+    display: flex; align-items: center; justify-content: center;
+  `;
+  form.innerHTML = `
+    <div style="background: white; border-radius: 8px; padding: 20px; max-width: 500px; width: 90%; position: relative;">
+      <button onclick="this.parentElement.parentElement.remove()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+      <h3 style="margin-bottom: 20px;">更新項目進度</h3>
+      <form id="progressUpdateForm">
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: bold;">進度百分比</label>
+          <input type="number" id="progressPercentage" min="0" max="100" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: bold;">更新說明</label>
+          <textarea id="progressDescription" rows="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;" placeholder="請描述項目進度更新內容..."></textarea>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: bold;">附件 (可選)</label>
+          <input type="file" id="progressAttachments" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+          <small style="color: #666;">支援 PDF, DOC, DOCX, JPG, PNG, GIF 格式，每個文件最大 10MB</small>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" onclick="this.closest('div').parentElement.remove()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">取消</button>
+          <button type="submit" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">提交進度</button>
+        </div>
+      </form>
+    </div>
+  `;
+  document.body.appendChild(form);
+  
+  // Handle form submission
+  form.querySelector('#progressUpdateForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const progress = parseInt(document.getElementById('progressPercentage').value);
+    const description = document.getElementById('progressDescription').value.trim();
+    const files = document.getElementById('progressAttachments').files;
+    
+    if (progress < 0 || progress > 100) {
+      alert('進度百分比必須在 0-100 之間');
+      return;
+    }
+    
+    // Create progress update
+    const progressUpdate = {
+      id: Date.now(),
+      progress: progress,
+      description: description,
+      timestamp: new Date().toISOString(),
+      updatedBy: currentUser.name,
+      updatedById: currentUser.id,
+      attachments: []
+    };
+    
+    // Handle file attachments (simplified - just store file names)
+    if (files.length > 0) {
+      for (let file of files) {
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+          alert(`文件 ${file.name} 超過 10MB 限制`);
+          return;
+        }
+        progressUpdate.attachments.push({
+          name: file.name,
+          size: file.size,
+          type: file.type
+        });
+      }
+    }
+    
+    // Save to localStorage
+    const existingUpdates = JSON.parse(localStorage.getItem(`projectProgress_${taskId}`) || '[]');
+    existingUpdates.push(progressUpdate);
+    localStorage.setItem(`projectProgress_${taskId}`, JSON.stringify(existingUpdates));
+    
+    // Close form
+    form.remove();
+    
+    // Refresh progress display
+    if (document.getElementById('projectProgressList')) {
+      // Reload the project stats modal to show updated progress
+      openProjectStatsModal();
+    }
+    
+    showNotification('項目進度已更新！', 'success');
+  });
 }
 
 // Message functionality

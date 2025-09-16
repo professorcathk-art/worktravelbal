@@ -322,6 +322,22 @@
                 <div class="admin-content" id="adminContent">
                     <!-- Admin content will be populated by JavaScript -->
                 </div>
+                
+                <!-- Rating Approval Modal -->
+                <div class="modal hidden" id="ratingApprovalModal">
+                    <div class="modal-backdrop" onclick="closeModal('ratingApprovalModal')"></div>
+                    <div class="modal-content modal-large">
+                        <div class="modal-header">
+                            <h3>員工評分審核</h3>
+                            <button class="modal-close" onclick="closeModal('ratingApprovalModal')">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <div id="pendingRatingsList">
+                                <!-- Pending ratings will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -351,6 +367,68 @@
                     <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
                         還沒有帳號？ 
                         <a href="#" onclick="closeModal('loginModal'); openModal('register');" style="color: var(--color-primary); text-decoration: none;">立即註冊</a>
+                    </p>
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: var(--space-8);">
+                        <a href="#" onclick="showForgotPasswordModal()" style="color: var(--color-primary); text-decoration: none;">忘記密碼？</a>
+                        <span style="margin: 0 var(--space-8);">|</span>
+                        <a href="#" onclick="showEmailCodeLoginModal()" style="color: var(--color-primary); text-decoration: none;">使用驗證碼登入</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal hidden" id="forgotPasswordModal">
+        <div class="modal-backdrop" onclick="closeModal('forgotPasswordModal')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>忘記密碼</h3>
+                <button class="modal-close" onclick="closeModal('forgotPasswordModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="forgotPasswordForm">
+                    <div class="form-group">
+                        <label class="form-label">電子郵件</label>
+                        <input type="email" class="form-control" id="forgotPasswordEmail" required>
+                    </div>
+                    <button type="submit" class="btn btn--primary btn--full-width">發送重設密碼連結</button>
+                </form>
+                <div style="text-align: center; margin-top: var(--space-16);">
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                        記起密碼了？ 
+                        <a href="#" onclick="closeModal('forgotPasswordModal'); openModal('login');" style="color: var(--color-primary); text-decoration: none;">返回登入</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Code Login Modal -->
+    <div class="modal hidden" id="emailCodeLoginModal">
+        <div class="modal-backdrop" onclick="closeModal('emailCodeLoginModal')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>驗證碼登入</h3>
+                <button class="modal-close" onclick="closeModal('emailCodeLoginModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="emailCodeLoginForm">
+                    <div class="form-group">
+                        <label class="form-label">電子郵件</label>
+                        <input type="email" class="form-control" id="emailCodeEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">驗證碼</label>
+                        <input type="text" class="form-control" id="emailCode" placeholder="請輸入6位數驗證碼" maxlength="6" required>
+                    </div>
+                    <button type="button" class="btn btn--outline btn--full-width" onclick="sendEmailCode()" style="margin-bottom: var(--space-12);">發送驗證碼</button>
+                    <button type="submit" class="btn btn--primary btn--full-width">登入</button>
+                </form>
+                <div style="text-align: center; margin-top: var(--space-16);">
+                    <p style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">
+                        使用密碼登入？ 
+                        <a href="#" onclick="closeModal('emailCodeLoginModal'); openModal('login');" style="color: var(--color-primary); text-decoration: none;">返回密碼登入</a>
                     </p>
                 </div>
             </div>
@@ -402,7 +480,106 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label">聯絡電話</label>
-                            <input type="tel" class="form-control" id="registerPhone">
+                            <div class="phone-input-group">
+                                <select class="form-control phone-country-code" id="registerCountryCode">
+                                    <option value="+852">+852 (香港)</option>
+                                    <option value="+886">+886 (台灣)</option>
+                                    <option value="+86">+86 (中國)</option>
+                                    <option value="+1">+1 (美國/加拿大)</option>
+                                    <option value="+44">+44 (英國)</option>
+                                    <option value="+81">+81 (日本)</option>
+                                    <option value="+82">+82 (韓國)</option>
+                                    <option value="+65">+65 (新加坡)</option>
+                                    <option value="+60">+60 (馬來西亞)</option>
+                                    <option value="+66">+66 (泰國)</option>
+                                    <option value="+84">+84 (越南)</option>
+                                    <option value="+49">+49 (德國)</option>
+                                    <option value="+33">+33 (法國)</option>
+                                    <option value="+34">+34 (西班牙)</option>
+                                    <option value="+39">+39 (意大利)</option>
+                                    <option value="+31">+31 (荷蘭)</option>
+                                    <option value="+46">+46 (瑞典)</option>
+                                    <option value="+47">+47 (挪威)</option>
+                                    <option value="+45">+45 (丹麥)</option>
+                                    <option value="+41">+41 (瑞士)</option>
+                                    <option value="+43">+43 (奧地利)</option>
+                                    <option value="+32">+32 (比利時)</option>
+                                    <option value="+351">+351 (葡萄牙)</option>
+                                    <option value="+30">+30 (希臘)</option>
+                                    <option value="+90">+90 (土耳其)</option>
+                                    <option value="+7">+7 (俄羅斯)</option>
+                                    <option value="+91">+91 (印度)</option>
+                                    <option value="+61">+61 (澳洲)</option>
+                                    <option value="+64">+64 (紐西蘭)</option>
+                                    <option value="+55">+55 (巴西)</option>
+                                    <option value="+52">+52 (墨西哥)</option>
+                                    <option value="+54">+54 (阿根廷)</option>
+                                    <option value="+56">+56 (智利)</option>
+                                    <option value="+57">+57 (哥倫比亞)</option>
+                                    <option value="+51">+51 (秘魯)</option>
+                                    <option value="+58">+58 (委內瑞拉)</option>
+                                    <option value="+27">+27 (南非)</option>
+                                    <option value="+20">+20 (埃及)</option>
+                                    <option value="+234">+234 (尼日利亞)</option>
+                                    <option value="+254">+254 (肯尼亞)</option>
+                                    <option value="+212">+212 (摩洛哥)</option>
+                                    <option value="+213">+213 (阿爾及利亞)</option>
+                                    <option value="+216">+216 (突尼斯)</option>
+                                    <option value="+218">+218 (利比亞)</option>
+                                    <option value="+220">+220 (岡比亞)</option>
+                                    <option value="+221">+221 (塞內加爾)</option>
+                                    <option value="+222">+222 (毛里塔尼亞)</option>
+                                    <option value="+223">+223 (馬里)</option>
+                                    <option value="+224">+224 (幾內亞)</option>
+                                    <option value="+225">+225 (科特迪瓦)</option>
+                                    <option value="+226">+226 (布基納法索)</option>
+                                    <option value="+227">+227 (尼日爾)</option>
+                                    <option value="+228">+228 (多哥)</option>
+                                    <option value="+229">+229 (貝寧)</option>
+                                    <option value="+230">+230 (毛里求斯)</option>
+                                    <option value="+231">+231 (利比里亞)</option>
+                                    <option value="+232">+232 (塞拉利昂)</option>
+                                    <option value="+233">+233 (加納)</option>
+                                    <option value="+235">+235 (乍得)</option>
+                                    <option value="+236">+236 (中非共和國)</option>
+                                    <option value="+237">+237 (喀麥隆)</option>
+                                    <option value="+238">+238 (佛得角)</option>
+                                    <option value="+239">+239 (聖多美和普林西比)</option>
+                                    <option value="+240">+240 (赤道幾內亞)</option>
+                                    <option value="+241">+241 (加蓬)</option>
+                                    <option value="+242">+242 (剛果共和國)</option>
+                                    <option value="+243">+243 (剛果民主共和國)</option>
+                                    <option value="+244">+244 (安哥拉)</option>
+                                    <option value="+245">+245 (幾內亞比紹)</option>
+                                    <option value="+246">+246 (英屬印度洋領地)</option>
+                                    <option value="+248">+248 (塞舌爾)</option>
+                                    <option value="+249">+249 (蘇丹)</option>
+                                    <option value="+250">+250 (盧旺達)</option>
+                                    <option value="+251">+251 (埃塞俄比亞)</option>
+                                    <option value="+252">+252 (索馬里)</option>
+                                    <option value="+253">+253 (吉布提)</option>
+                                    <option value="+255">+255 (坦桑尼亞)</option>
+                                    <option value="+256">+256 (烏干達)</option>
+                                    <option value="+257">+257 (布隆迪)</option>
+                                    <option value="+258">+258 (莫桑比克)</option>
+                                    <option value="+260">+260 (贊比亞)</option>
+                                    <option value="+261">+261 (馬達加斯加)</option>
+                                    <option value="+262">+262 (留尼汪)</option>
+                                    <option value="+263">+263 (津巴布韋)</option>
+                                    <option value="+264">+264 (納米比亞)</option>
+                                    <option value="+265">+265 (馬拉維)</option>
+                                    <option value="+266">+266 (萊索托)</option>
+                                    <option value="+267">+267 (博茨瓦納)</option>
+                                    <option value="+268">+268 (斯威士蘭)</option>
+                                    <option value="+269">+269 (科摩羅)</option>
+                                    <option value="+290">+290 (聖赫勒拿)</option>
+                                    <option value="+291">+291 (厄立特里亞)</option>
+                                    <option value="+297">+297 (阿魯巴)</option>
+                                    <option value="+298">+298 (法羅群島)</option>
+                                    <option value="+299">+299 (格陵蘭)</option>
+                                </select>
+                                <input type="tel" class="form-control phone-number" id="registerPhone" placeholder="請輸入電話號碼">
+                            </div>
                         </div>
                         <button type="button" class="btn btn--primary btn--full-width" onclick="nextStep()">下一步</button>
                     </div>
@@ -431,13 +608,62 @@
                             </div>
                             <div class="form-group">
                                 <label class="form-label">語言能力</label>
-                                <div class="languages-input">
-                                    <input type="text" class="form-control" id="languageInput" placeholder="輸入語言並按 Enter">
+                                <div class="languages-selection">
+                                    <div class="language-options" id="languageOptions">
+                                        <label class="language-option">
+                                            <input type="checkbox" value="English" name="languages">
+                                            <span>English</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="普通話" name="languages">
+                                            <span>普通話</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="廣東話" name="languages">
+                                            <span>廣東話</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="日語" name="languages">
+                                            <span>日語</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="韓語" name="languages">
+                                            <span>韓語</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="法語" name="languages">
+                                            <span>法語</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="德語" name="languages">
+                                            <span>德語</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="西班牙語" name="languages">
+                                            <span>西班牙語</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="泰語" name="languages">
+                                            <span>泰語</span>
+                                        </label>
+                                        <label class="language-option">
+                                            <input type="checkbox" value="越南語" name="languages">
+                                            <span>越南語</span>
+                                        </label>
+                                    </div>
                                     <div class="languages-tags" id="languagesTags"></div>
                                 </div>
                             </div>
                         </div>
                         <div id="clientFields" class="hidden">
+                            <div class="form-group">
+                                <label class="form-label">聯絡人姓名</label>
+                                <input type="text" class="form-control" id="contactName" placeholder="請輸入聯絡人姓名">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">公司名稱</label>
+                                <input type="text" class="form-control" id="companyName" placeholder="請輸入公司名稱">
+                            </div>
                             <div class="form-group">
                                 <label class="form-label">公司規模</label>
                                 <select class="form-control" id="companySize">
@@ -497,6 +723,25 @@
                     <div class="form-group">
                         <label class="form-label">作品集連結 (選填)</label>
                         <input type="url" class="form-control" id="portfolioLink" placeholder="展示相關作品的連結">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">選擇作品集檔案 (選填)</label>
+                        <input type="file" class="form-control" id="applicationPortfolio" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
+                        <small class="form-text">可以選擇已上傳的作品集檔案發送給雇主</small>
+                        <div id="applicationPortfolioFiles" class="portfolio-files"></div>
+                    </div>
+                    <div class="form-group">
+                        <div class="warning-box" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                            <div style="display: flex; align-items: start; gap: 8px;">
+                                <div style="font-size: 18px;">⚠️</div>
+                                <div>
+                                    <strong style="color: #856404;">重要提醒</strong>
+                                    <p style="margin: 4px 0 0 0; font-size: 14px; color: #856404; line-height: 1.4;">
+                                        請勿在申請中提供個人敏感資訊，如身份證號碼、銀行帳戶、密碼等。我們建議您先與雇主建立信任關係後再分享詳細資訊。
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <div class="form-buttons">
                         <button type="button" class="btn btn--outline" onclick="closeModal('applicationModal')">取消</button>
@@ -790,11 +1035,12 @@
         <div class="modal-backdrop" onclick="closeModal('projectStatsModal')"></div>
         <div class="modal-content modal-large">
             <div class="modal-header">
-                <h3>項目統計</h3>
+                <h3>項目統計與進度追蹤</h3>
                 <button class="modal-close" onclick="closeModal('projectStatsModal')">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="projectStatsContent">
+                    <!-- Statistics Overview -->
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-16); margin-bottom: var(--space-24);">
                         <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-1); border-radius: var(--radius-base);">
                             <div id="totalProjects" style="font-size: var(--font-size-2xl); font-weight: var(--font-weight-bold); color: var(--color-primary);">0</div>
@@ -813,8 +1059,13 @@
                             <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">總申請數</div>
                         </div>
                     </div>
-                    <div style="text-align: center; color: var(--color-text-secondary);">
-                        <p>更多詳細統計功能將在後續版本中提供</p>
+                    
+                    <!-- Project Progress Tracking -->
+                    <div style="margin-bottom: var(--space-24);">
+                        <h4 style="margin-bottom: var(--space-16);">項目進度追蹤</h4>
+                        <div id="projectProgressList" style="display: grid; gap: var(--space-16);">
+                            <!-- Project progress items will be loaded here -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -876,6 +1127,12 @@
                         <small class="form-text">支援 JPG, PNG 格式，檔案大小不超過 2MB</small>
                     </div>
                     <div class="form-group">
+                        <label class="form-label">CV/作品集</label>
+                        <input type="file" class="form-control" id="expertPortfolio" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
+                        <small class="form-text">支援 PDF, DOC, DOCX, JPG, PNG, GIF 格式，最多5個檔案，每個檔案不超過 10MB</small>
+                        <div id="portfolioFiles" class="portfolio-files"></div>
+                    </div>
+                    <div class="form-group">
                         <label class="form-label">技能</label>
                         <div id="expertSkillsContainer" class="skills-container">
                             <!-- Skills will be populated here -->
@@ -917,6 +1174,17 @@
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer style="background: var(--color-bg-2); border-top: 1px solid var(--color-border); padding: var(--space-24) 0; margin-top: var(--space-48);">
+        <div class="container">
+            <div style="text-align: center; color: var(--color-text-secondary);">
+                <p style="margin: 0; font-size: var(--font-size-sm);">
+                    © 2025 數牧人. 保留所有權利.
+                </p>
+            </div>
+        </div>
+    </footer>
 
     <script src="app.js"></script>
 </body>
