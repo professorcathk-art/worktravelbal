@@ -2488,11 +2488,21 @@ function applyToTask(taskId) {
 }
 
 async function handleTaskApplication() {
-  const taskId = document.getElementById('applicationModal').dataset.taskId;
+  const applicationModal = document.getElementById('applicationModal');
+  const taskId = applicationModal.dataset.taskId;
   const proposalText = document.getElementById('proposalText').value;
   const bidAmount = document.getElementById('bidAmount').value;
   const deliveryTime = document.getElementById('deliveryTime').value;
   const portfolioLink = document.getElementById('portfolioLink').value;
+  
+  console.log('Application submission data:', {
+    taskId,
+    proposalText,
+    bidAmount,
+    deliveryTime,
+    portfolioLink,
+    currentUser: currentUser ? currentUser.id : 'no user'
+  });
   
   if (!proposalText || !bidAmount || !deliveryTime) {
     showNotification('請填寫所有必填欄位', 'error');
@@ -2501,6 +2511,11 @@ async function handleTaskApplication() {
   
   if (!currentUser) {
     showNotification('請先登入', 'error');
+    return;
+  }
+  
+  if (!taskId || taskId === 'undefined') {
+    showNotification('任務ID無效，請重新選擇任務', 'error');
     return;
   }
   
@@ -2698,10 +2713,10 @@ async function populateExpertPortal(content) {
           <h4>工作狀態</h4>
           <div class="status-toggle">
             <label class="toggle-switch">
-              <input type="checkbox" id="availabilityToggle" ${currentUser.availability_status === 'busy' ? 'checked' : ''}>
+              <input type="checkbox" id="availabilityToggle" ${currentUser.availability_status === 'available' ? 'checked' : ''}>
               <span class="toggle-slider"></span>
             </label>
-            <span id="statusText" class="status-text">${currentUser.availability_status === 'busy' ? '暫時約滿' : '可接任務'}</span>
+            <span id="statusText" class="status-text">${currentUser.availability_status === 'available' ? '可接任務' : '暫時約滿'}</span>
           </div>
         </div>
         
@@ -3552,6 +3567,9 @@ function openCorporateProfileModal() {
 
 // Expert Profile Management
 function openExpertProfileModal() {
+  console.log('openExpertProfileModal called');
+  console.log('currentUser:', currentUser);
+  
   // Populate the form with current user data
   if (currentUser) {
     document.getElementById('expertName').value = currentUser.name || '';
@@ -3707,8 +3725,10 @@ async function handleExpertProfileUpdate(event) {
 }
 
 // Expert availability toggle
-async function toggleExpertAvailability(isBusy) {
+async function toggleExpertAvailability(isAvailable) {
   if (!currentUser || currentUser.type !== 'expert') return;
+  
+  console.log('toggleExpertAvailability called with isAvailable:', isAvailable);
   
   try {
     const response = await fetch('/api/users', {
@@ -3718,22 +3738,22 @@ async function toggleExpertAvailability(isBusy) {
       },
       body: JSON.stringify({
         user_id: currentUser.id,
-        availability_status: isBusy ? 'busy' : 'available'
+        availability_status: isAvailable ? 'available' : 'busy'
       })
     });
     
     if (response.ok) {
       // Update current user
-      currentUser.availability_status = isBusy ? 'busy' : 'available';
+      currentUser.availability_status = isAvailable ? 'available' : 'busy';
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
       
       // Update status text
       const statusText = document.getElementById('statusText');
       if (statusText) {
-        statusText.textContent = isBusy ? '暫時約滿' : '可接任務';
+        statusText.textContent = isAvailable ? '可接任務' : '暫時約滿';
       }
       
-      showNotification(`狀態已更新為：${isBusy ? '暫時約滿' : '可接任務'}`, 'success');
+      showNotification(`狀態已更新為：${isAvailable ? '可接任務' : '暫時約滿'}`, 'success');
       
       // Refresh expert marketplace if it's currently displayed
       if (document.getElementById('expertMarketplace') && !document.getElementById('expertMarketplace').classList.contains('hidden')) {
