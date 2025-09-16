@@ -2728,7 +2728,7 @@ async function populateExpertPortal(content) {
           <div style="margin-bottom: var(--space-8);"><strong>時薪:</strong> ${currentUser.hourlyRate || '未設定'}</div>
           <div style="margin-bottom: var(--space-8);"><strong>頭像:</strong> ${currentUser.avatar ? '✅ 已上傳' : '❌ 未上傳'}</div>
           <div style="margin-bottom: var(--space-8);"><strong>驗證狀態:</strong> ${currentUser.verified ? '✅ 已驗證' : '⏳ 待驗證'}</div>
-          <button class="btn btn--outline btn--sm" onclick="openExpertProfileModal()" style="margin-top: var(--space-12);">編輯個人資料</button>
+          <button class="btn btn--outline btn--sm" onclick="console.log('Button clicked!'); openExpertProfileModal();" style="margin-top: var(--space-12);">編輯個人資料</button>
         </div>
         
         ${currentUser.skills && currentUser.skills.length > 0 ? `
@@ -3570,38 +3570,48 @@ function openExpertProfileModal() {
   console.log('openExpertProfileModal called');
   console.log('currentUser:', currentUser);
   
-  // Populate the form with current user data
-  if (currentUser) {
-    document.getElementById('expertName').value = currentUser.name || '';
-    document.getElementById('expertLocation').value = currentUser.location || '';
-    document.getElementById('expertHourlyRate').value = currentUser.hourlyRate || '';
-    
-    // Populate skills
-    const skillsContainer = document.getElementById('expertSkillsContainer');
-    skillsContainer.innerHTML = '';
-    if (currentUser.skills && currentUser.skills.length > 0) {
-      currentUser.skills.forEach(skill => {
-        const skillTag = document.createElement('span');
-        skillTag.className = 'skill-tag';
-        skillTag.innerHTML = `${skill} <span class="remove-skill" onclick="removeExpertSkill('${skill}')">&times;</span>`;
-        skillsContainer.appendChild(skillTag);
-      });
+  try {
+    // Populate the form with current user data
+    if (currentUser) {
+      document.getElementById('expertName').value = currentUser.name || '';
+      document.getElementById('expertLocation').value = currentUser.location || '';
+      document.getElementById('expertHourlyRate').value = currentUser.hourlyRate || '';
+      
+      // Populate skills
+      const skillsContainer = document.getElementById('expertSkillsContainer');
+      if (skillsContainer) {
+        skillsContainer.innerHTML = '';
+        if (currentUser.skills && currentUser.skills.length > 0) {
+          currentUser.skills.forEach(skill => {
+            const skillTag = document.createElement('span');
+            skillTag.className = 'skill-tag';
+            skillTag.innerHTML = `${skill} <span class="remove-skill" onclick="removeExpertSkill('${skill}')">&times;</span>`;
+            skillsContainer.appendChild(skillTag);
+          });
+        }
+      }
+      
+      // Populate languages
+      const languagesContainer = document.getElementById('expertLanguagesContainer');
+      if (languagesContainer) {
+        languagesContainer.innerHTML = '';
+        if (currentUser.languages && currentUser.languages.length > 0) {
+          currentUser.languages.forEach(language => {
+            const languageTag = document.createElement('span');
+            languageTag.className = 'skill-tag';
+            languageTag.innerHTML = `${language} <span class="remove-skill" onclick="removeExpertLanguage('${language}')">&times;</span>`;
+            languagesContainer.appendChild(languageTag);
+          });
+        }
+      }
     }
     
-    // Populate languages
-    const languagesContainer = document.getElementById('expertLanguagesContainer');
-    languagesContainer.innerHTML = '';
-    if (currentUser.languages && currentUser.languages.length > 0) {
-      currentUser.languages.forEach(language => {
-        const languageTag = document.createElement('span');
-        languageTag.className = 'skill-tag';
-        languageTag.innerHTML = `${language} <span class="remove-skill" onclick="removeExpertLanguage('${language}')">&times;</span>`;
-        languagesContainer.appendChild(languageTag);
-      });
-    }
+    console.log('About to open expert profile modal');
+    openModal('expertProfile');
+  } catch (error) {
+    console.error('Error in openExpertProfileModal:', error);
+    showNotification('開啟個人資料編輯時發生錯誤', 'error');
   }
-  
-  openModal('expertProfileModal');
 }
 
 async function handleCorporateProfileUpdate(event) {
