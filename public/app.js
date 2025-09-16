@@ -2067,7 +2067,7 @@ async function loadExpertMessages() {
       
       console.log('Generating expert thread card for thread:', thread.id);
       return `
-        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="console.log('Expert thread clicked:', '${thread.id}'); openMessageThread('${thread.id}')">
+        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="console.log('Expert thread clicked:', '${thread.id}'); alert('Thread clicked: ${thread.id}'); openMessageThread('${thread.id}')">
           <div class="thread-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
             <div>
               <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${thread.title}</div>
@@ -2138,7 +2138,7 @@ async function loadCorporateMessages() {
       
       console.log('Generating corporate thread card for thread:', thread.id);
       return `
-        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="console.log('Corporate thread clicked:', '${thread.id}'); openMessageThread('${thread.id}')">
+        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="console.log('Corporate thread clicked:', '${thread.id}'); alert('Thread clicked: ${thread.id}'); openMessageThread('${thread.id}')">
           <div class="thread-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
             <div>
               <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${thread.title}</div>
@@ -2284,11 +2284,24 @@ function openMessageThread(threadId) {
     return;
   }
 
+  // Check if modal elements exist
+  const modalTitle = document.getElementById('messageThreadTitle');
+  const modal = document.getElementById('messageThreadModal');
+  
+  console.log('Modal title element:', modalTitle);
+  console.log('Modal element:', modal);
+  
+  if (!modalTitle || !modal) {
+    console.error('Modal elements not found!');
+    showNotification('訊息對話視窗無法開啟', 'error');
+    return;
+  }
+  
   // Set modal title
-  document.getElementById('messageThreadTitle').textContent = thread.title;
+  modalTitle.textContent = thread.title;
   
   // Store current thread ID for sending messages
-  document.getElementById('messageThreadModal').dataset.threadId = threadId;
+  modal.dataset.threadId = threadId;
   
   // Display messages
   const content = document.getElementById('messageThreadContent');
@@ -2320,7 +2333,9 @@ function openMessageThread(threadId) {
   localStorage.setItem('messageThreads', JSON.stringify(messageThreads));
   
   // Open modal
-  openModal('messageThreadModal');
+  console.log('About to open modal messageThread');
+  openModal('messageThread');
+  console.log('Modal openModal called');
 }
 
 // Send message in thread
