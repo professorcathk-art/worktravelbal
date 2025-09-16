@@ -1268,13 +1268,6 @@ function setupFormHandlers() {
     });
   }
 
-  // Availability toggle
-  const availabilityToggle = document.getElementById('availabilityToggle');
-  if (availabilityToggle) {
-    availabilityToggle.addEventListener('change', function(e) {
-      toggleExpertAvailability(e.target.checked);
-    });
-  }
 
   // Message form
   const messageForm = document.getElementById('messageForm');
@@ -2053,7 +2046,8 @@ function populateExperts(experts = platformData.experts) {
     const completedProjects = expert.completed_projects || 0;
     const hourlyRate = expert.hourly_rate || '$40-60';
     const skills = expert.skills || ['專業服務'];
-    const availabilityStatus = expert.availability_status || 'busy';
+    // Always show experts as available
+    const availabilityStatus = 'available';
     
     const card = document.createElement('div');
     card.className = 'expert-card';
@@ -2707,17 +2701,6 @@ async function populateExpertPortal(content) {
             <div class="completion-fill" style="width: ${profileComplete}%"></div>
           </div>
           <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">${profileComplete}% 完成</div>
-        </div>
-        
-        <div class="availability-status">
-          <h4>工作狀態</h4>
-          <div class="status-toggle">
-            <label class="toggle-switch">
-              <input type="checkbox" id="availabilityToggle" ${currentUser.availability_status === 'available' ? 'checked' : ''}>
-              <span class="toggle-slider"></span>
-            </label>
-            <span id="statusText" class="status-text">${currentUser.availability_status === 'available' ? '可接任務' : '暫時約滿'}</span>
-          </div>
         </div>
         
         <div class="profile-section">
@@ -3739,50 +3722,6 @@ async function handleExpertProfileUpdate(event) {
   }
 }
 
-// Expert availability toggle
-async function toggleExpertAvailability(isAvailable) {
-  if (!currentUser || currentUser.type !== 'expert') return;
-  
-  console.log('toggleExpertAvailability called with isAvailable:', isAvailable);
-  
-  try {
-    const response = await fetch('/api/users', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        user_id: currentUser.id,
-        availability_status: isAvailable ? 'available' : 'busy'
-      })
-    });
-    
-    if (response.ok) {
-      // Update current user
-      currentUser.availability_status = isAvailable ? 'available' : 'busy';
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-      
-      // Update status text
-      const statusText = document.getElementById('statusText');
-      if (statusText) {
-        statusText.textContent = isAvailable ? '可接任務' : '暫時約滿';
-      }
-      
-      showNotification(`狀態已更新為：${isAvailable ? '可接任務' : '暫時約滿'}`, 'success');
-      
-      // Refresh expert marketplace if it's currently displayed
-      if (document.getElementById('expertMarketplace') && !document.getElementById('expertMarketplace').classList.contains('hidden')) {
-        loadVerifiedExperts();
-      }
-    } else {
-      const error = await response.json();
-      showNotification('更新狀態失敗：' + (error.error || '網絡錯誤'), 'error');
-    }
-  } catch (error) {
-    console.error('Error toggling availability:', error);
-    showNotification('更新狀態時發生錯誤', 'error');
-  }
-}
 
 // Project Statistics functionality
 async function openProjectStatsModal() {
@@ -3951,7 +3890,6 @@ window.handleCorporateProfileUpdate = handleCorporateProfileUpdate;
 window.openProjectStatsModal = openProjectStatsModal;
 window.openExpertProfileModal = openExpertProfileModal;
 window.handleExpertProfileUpdate = handleExpertProfileUpdate;
-window.toggleExpertAvailability = toggleExpertAvailability;
 window.openMessageModal = openMessageModal;
 window.handleMessageSubmission = handleMessageSubmission;
 window.addExpertSkill = addExpertSkill;
