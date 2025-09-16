@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
           a.*,
           u.name as expert_name,
           u.email as expert_email,
-          u.avatar as expert_avatar,
+          ep.avatar_url as expert_avatar,
           u.bio as expert_bio,
           ep.hourly_rate,
           ep.rating,

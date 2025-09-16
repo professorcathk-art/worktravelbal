@@ -531,10 +531,10 @@ function displayMyTasks(tasks) {
       </div>
       
       <div style="display: flex; gap: var(--space-8); flex-wrap: wrap;">
-        <button class="btn btn--primary btn--sm" onclick="viewTaskApplications('${task.id}')">
+        <button class="btn btn--primary btn--sm" onclick="console.log('View applications clicked for task:', '${task.id}'); viewTaskApplications('${task.id}')">
           查看申請 (${task.applications_count || task.application_count || 0})
         </button>
-        <button class="btn btn--outline btn--sm" onclick="editTask('${task.id}')">
+        <button class="btn btn--outline btn--sm" onclick="console.log('Edit task clicked for task:', '${task.id}'); editTask('${task.id}')">
           編輯任務
         </button>
         ${task.status === 'open' ? `
@@ -2881,7 +2881,7 @@ function populateClientPortal(content) {
           <div style="margin-bottom: var(--space-8);"><strong>Line:</strong> ${currentUser.line || '未設定'}</div>
           <div style="margin-bottom: var(--space-8);"><strong>營業執照:</strong> ${currentUser.businessLicense ? '✅ 已上傳' : '❌ 未上傳'}</div>
           <div style="margin-bottom: var(--space-8);"><strong>驗證狀態:</strong> ${currentUser.verified ? '✅ 已驗證' : '⏳ 待驗證'}</div>
-          <button class="btn btn--outline btn--sm" onclick="openCorporateProfileModal()" style="margin-top: var(--space-12);">編輯企業資料</button>
+          <button class="btn btn--outline btn--sm" onclick="console.log('Corporate button clicked!'); openCorporateProfileModal();" style="margin-top: var(--space-12);">編輯企業資料</button>
         </div>
       </div>
       
@@ -3551,18 +3551,23 @@ function openCorporateProfileModal() {
   console.log('openCorporateProfileModal called');
   console.log('currentUser:', currentUser);
   
-  // Populate the form with current user data
-  if (currentUser) {
-    document.getElementById('corporateName').value = currentUser.name || '';
-    document.getElementById('corporateSize').value = currentUser.companySize || '';
-    document.getElementById('corporateIndustry').value = currentUser.industry || '';
-    document.getElementById('corporatePhone').value = currentUser.phone || '';
-    document.getElementById('corporateWechat').value = currentUser.wechat || '';
-    document.getElementById('corporateLine').value = currentUser.line || '';
+  try {
+    // Populate the form with current user data
+    if (currentUser) {
+      document.getElementById('corporateName').value = currentUser.name || '';
+      document.getElementById('corporateSize').value = currentUser.companySize || '';
+      document.getElementById('corporateIndustry').value = currentUser.industry || '';
+      document.getElementById('corporatePhone').value = currentUser.phone || '';
+      document.getElementById('corporateWechat').value = currentUser.wechat || '';
+      document.getElementById('corporateLine').value = currentUser.line || '';
+    }
+    
+    console.log('About to open corporate profile modal');
+    openModal('corporateProfile');
+  } catch (error) {
+    console.error('Error in openCorporateProfileModal:', error);
+    showNotification('開啟企業資料編輯時發生錯誤', 'error');
   }
-  
-  console.log('Opening corporate profile modal');
-  openModal('corporateProfileModal');
 }
 
 // Expert Profile Management
