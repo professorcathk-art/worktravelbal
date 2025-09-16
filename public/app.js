@@ -3709,6 +3709,11 @@ async function handleExpertProfileUpdate(event) {
       // Update the portal display
       populateExpertPortal(document.getElementById('portalContent'));
       
+      // Refresh expert marketplace if it's currently displayed
+      if (document.getElementById('expertMarketplace') && !document.getElementById('expertMarketplace').classList.contains('hidden')) {
+        loadVerifiedExperts();
+      }
+      
       closeModal('expertProfileModal');
       showNotification('個人資料已成功更新', 'success');
     } else {
@@ -3818,33 +3823,75 @@ async function handleMessageSubmission(event) {
 }
 
 // Expert skills and languages management
-function addExpertSkill(skill) {
+async function addExpertSkill(skill) {
   if (!currentUser.skills) currentUser.skills = [];
   if (!currentUser.skills.includes(skill)) {
     currentUser.skills.push(skill);
     updateExpertSkillsDisplay();
+    
+    // Save to database and refresh marketplace
+    await saveExpertSkillsAndRefresh();
   }
 }
 
-function removeExpertSkill(skill) {
+async function removeExpertSkill(skill) {
   if (currentUser.skills) {
     currentUser.skills = currentUser.skills.filter(s => s !== skill);
     updateExpertSkillsDisplay();
+    
+    // Save to database and refresh marketplace
+    await saveExpertSkillsAndRefresh();
   }
 }
 
-function addExpertLanguage(language) {
+async function addExpertLanguage(language) {
   if (!currentUser.languages) currentUser.languages = [];
   if (!currentUser.languages.includes(language)) {
     currentUser.languages.push(language);
     updateExpertLanguagesDisplay();
+    
+    // Save to database and refresh marketplace
+    await saveExpertLanguagesAndRefresh();
   }
 }
 
-function removeExpertLanguage(language) {
+async function removeExpertLanguage(language) {
   if (currentUser.languages) {
     currentUser.languages = currentUser.languages.filter(l => l !== language);
     updateExpertLanguagesDisplay();
+    
+    // Save to database and refresh marketplace
+    await saveExpertLanguagesAndRefresh();
+  }
+}
+
+// Helper function to save skills and refresh marketplace
+async function saveExpertSkillsAndRefresh() {
+  try {
+    // Save to localStorage
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    // Refresh expert marketplace if it's currently displayed
+    if (document.getElementById('expertMarketplace') && !document.getElementById('expertMarketplace').classList.contains('hidden')) {
+      loadVerifiedExperts();
+    }
+  } catch (error) {
+    console.error('Error saving expert skills:', error);
+  }
+}
+
+// Helper function to save languages and refresh marketplace
+async function saveExpertLanguagesAndRefresh() {
+  try {
+    // Save to localStorage
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    
+    // Refresh expert marketplace if it's currently displayed
+    if (document.getElementById('expertMarketplace') && !document.getElementById('expertMarketplace').classList.contains('hidden')) {
+      loadVerifiedExperts();
+    }
+  } catch (error) {
+    console.error('Error saving expert languages:', error);
   }
 }
 
