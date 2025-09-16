@@ -898,6 +898,26 @@
         </div>
     </div>
 
+    <!-- Message Thread Modal -->
+    <div class="modal hidden" id="messageThreadModal">
+        <div class="modal-backdrop" onclick="closeModal('messageThreadModal')"></div>
+        <div class="modal-content" style="max-width: 800px; height: 80vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3 id="messageThreadTitle">訊息對話</h3>
+                <button class="modal-close" onclick="closeModal('messageThreadModal')">&times;</button>
+            </div>
+            <div class="modal-body" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+                <div id="messageThreadContent" style="flex: 1; overflow-y: auto; padding: var(--space-16); background: var(--color-bg-1); border-radius: var(--radius-base); margin-bottom: var(--space-16);">
+                    <!-- Messages will be loaded here -->
+                </div>
+                <div class="message-input-area" style="display: flex; gap: var(--space-8);">
+                    <textarea id="newMessageContent" placeholder="輸入您的訊息..." rows="2" style="flex: 1; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm); resize: vertical;"></textarea>
+                    <button onclick="sendThreadMessage()" class="btn btn--primary" style="align-self: flex-end;">發送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

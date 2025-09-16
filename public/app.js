@@ -858,47 +858,58 @@ async function handleInterviewScheduling() {
       return;
     }
     
-    // Store interview data locally (since messages table doesn't exist yet)
-    const interviewData = {
-      id: Date.now(),
-      applicationId: applicationId,
-      taskId: taskId,
+    // Create a message thread for interview scheduling
+    const threadId = Date.now().toString();
+    const interviewMessage = `
+面試安排通知
+
+親愛的專家，
+
+我們很高興通知您，我們希望與您安排面試來進一步討論這個項目。
+
+面試詳情：
+• 日期：${date}
+• 時間：${time}
+• 方式：${type}
+• 地點：${location}
+${notes ? `• 備註：${notes}` : ''}
+
+請確認您是否能夠參加此次面試。如有任何問題，請隨時與我們聯繫。
+
+期待與您的面試！
+
+此致
+${currentUser.name}
+    `.trim();
+    
+    // Create message thread
+    const thread = {
+      id: threadId,
+      type: 'interview',
+      title: '面試安排 - ' + new Date(date).toLocaleDateString('zh-TW'),
       expertId: expertId,
-      employerId: currentUser.id,
-      employerName: currentUser.name,
-      date: date,
-      time: time,
-      type: type,
-      location: location,
-      notes: notes,
+      expertName: document.getElementById('interviewApplicantName').value,
+      corporateId: currentUser.id,
+      corporateName: currentUser.name,
+      taskId: taskId,
+      taskTitle: '面試安排',
+      applicationId: applicationId,
       createdAt: new Date().toISOString(),
-      status: 'scheduled'
+      messages: [{
+        id: Date.now(),
+        senderId: currentUser.id,
+        senderName: currentUser.name,
+        receiverId: expertId,
+        content: interviewMessage,
+        createdAt: new Date().toISOString(),
+        isRead: false
+      }]
     };
     
-    // Store in localStorage for now
-    let interviews = JSON.parse(localStorage.getItem('scheduledInterviews') || '[]');
-    interviews.push(interviewData);
-    localStorage.setItem('scheduledInterviews', JSON.stringify(interviews));
-    
-    // Also store as a notification for the expert
-    let expertNotifications = JSON.parse(localStorage.getItem('expertNotifications') || '[]');
-    const notification = {
-      id: Date.now(),
-      type: 'interview_invite',
-      expertId: expertId,
-      applicationId: applicationId,
-      taskId: taskId,
-      employerName: currentUser.name,
-      date: date,
-      time: time,
-      type: type,
-      location: location,
-      notes: notes,
-      createdAt: new Date().toISOString(),
-      isRead: false
-    };
-    expertNotifications.push(notification);
-    localStorage.setItem('expertNotifications', JSON.stringify(expertNotifications));
+    // Store thread in localStorage
+    let messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+    messageThreads.push(thread);
+    localStorage.setItem('messageThreads', JSON.stringify(messageThreads));
     
     // Don't update application status - just use messaging system
     showNotification('面試已安排！專家將在他們的個人管理中心看到面試通知。', 'success');
@@ -908,9 +919,9 @@ async function handleInterviewScheduling() {
     document.getElementById('interviewForm').reset();
     
     // Refresh the applications view
-    const taskId = document.getElementById('taskApplicationsModal').dataset.taskId;
-    if (taskId) {
-      viewTaskApplications(taskId);
+    const currentTaskId = document.getElementById('taskApplicationsModal').dataset.taskId;
+    if (currentTaskId) {
+      viewTaskApplications(currentTaskId);
     }
   } catch (error) {
     console.error('Error scheduling interview:', error);
@@ -2017,7 +2028,7 @@ async function loadUserApplications() {
   }
 }
 
-// Load expert notifications from localStorage
+// Load expert message threads from localStorage
 async function loadExpertMessages() {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -2026,96 +2037,64 @@ async function loadExpertMessages() {
       return;
     }
 
-    // Get notifications for this expert from localStorage
-    const expertNotifications = JSON.parse(localStorage.getItem('expertNotifications') || '[]');
-    const userNotifications = expertNotifications.filter(notification => 
-      notification.expertId === currentUser.id
+    // Get message threads for this expert from localStorage
+    const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+    const userThreads = messageThreads.filter(thread => 
+      thread.expertId === currentUser.id || thread.corporateId === currentUser.id
     );
     
-    const messagesContainer = document.getElementById('expertMessages');
+    const messagesContainer = document.getElementById('expertMessageThreads');
     if (!messagesContainer) return;
 
-    if (userNotifications.length === 0) {
-      messagesContainer.innerHTML = '<p style="color: var(--color-text-secondary);">您還沒有收到任何通知</p>';
+    if (userThreads.length === 0) {
+      messagesContainer.innerHTML = '<p style="color: var(--color-text-secondary);">您還沒有任何訊息對話</p>';
       return;
     }
 
-    messagesContainer.innerHTML = userNotifications.map(notification => {
-      if (notification.type === 'interview_invite') {
-        return `
-          <div class="message-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); ${!notification.isRead ? 'border-left: 4px solid var(--color-primary);' : ''}">
-            <div class="message-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
-              <div>
-                <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">面試安排通知</div>
-                <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">來自: ${notification.employerName}</div>
-              </div>
+    messagesContainer.innerHTML = userThreads.map(thread => {
+      const lastMessage = thread.messages[thread.messages.length - 1];
+      const unreadCount = thread.messages.filter(msg => 
+        msg.receiverId === currentUser.id && !msg.isRead
+      ).length;
+      
+      return `
+        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="openMessageThread('${thread.id}')">
+          <div class="thread-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+            <div>
+              <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${thread.title}</div>
+              <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">與: ${thread.corporateId === currentUser.id ? thread.expertName : thread.corporateName}</div>
+              ${thread.taskTitle ? `<div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">任務: ${thread.taskTitle}</div>` : ''}
+            </div>
+            <div style="text-align: right;">
               <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                ${new Date(notification.createdAt).toLocaleDateString('zh-TW')}
+                ${new Date(lastMessage.createdAt).toLocaleDateString('zh-TW')}
               </div>
-            </div>
-            <div class="message-content" style="margin-bottom: var(--space-12);">
-              <div style="white-space: pre-line; line-height: 1.6;">
-面試安排通知
-
-親愛的專家，
-
-我們很高興通知您，我們希望與您安排面試來進一步討論這個項目。
-
-面試詳情：
-• 日期：${notification.date}
-• 時間：${notification.time}
-• 方式：${notification.type}
-• 地點：${notification.location}
-${notification.notes ? `• 備註：${notification.notes}` : ''}
-
-請確認您是否能夠參加此次面試。如有任何問題，請隨時與我們聯繫。
-
-期待與您的面試！
-
-此致
-${notification.employerName}
-              </div>
-            </div>
-            <div class="message-actions" style="display: flex; gap: var(--space-8);">
-              <span style="background: var(--color-primary); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">面試邀請</span>
-              ${!notification.isRead ? '<span style="background: var(--color-warning); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">未讀</span>' : ''}
+              ${unreadCount > 0 ? `<div style="background: var(--color-primary); color: white; padding: var(--space-2) var(--space-6); border-radius: var(--radius-full); font-size: var(--font-size-xs); margin-top: var(--space-4);">${unreadCount}</div>` : ''}
             </div>
           </div>
-        `;
-      } else if (notification.type === 'general_message') {
-        return `
-          <div class="message-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); ${!notification.isRead ? 'border-left: 4px solid var(--color-primary);' : ''}">
-            <div class="message-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
-              <div>
-                <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${notification.subject || '新訊息'}</div>
-                <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">來自: ${notification.senderName}</div>
-              </div>
-              <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-                ${new Date(notification.createdAt).toLocaleDateString('zh-TW')}
-              </div>
-            </div>
-            <div class="message-content" style="margin-bottom: var(--space-12);">
-              <div style="white-space: pre-line; line-height: 1.6;">${notification.content}</div>
-            </div>
-            <div class="message-actions" style="display: flex; gap: var(--space-8);">
-              ${!notification.isRead ? '<span style="background: var(--color-warning); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">未讀</span>' : ''}
+          <div class="thread-preview" style="margin-bottom: var(--space-12);">
+            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ${lastMessage.content.substring(0, 100)}${lastMessage.content.length > 100 ? '...' : ''}
             </div>
           </div>
-        `;
-      }
-      return '';
-    }).filter(html => html).join('');
+          <div class="thread-actions" style="display: flex; gap: var(--space-8);">
+            ${thread.type === 'interview' ? '<span style="background: var(--color-primary); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">面試對話</span>' : ''}
+            <span style="background: var(--color-bg-2); color: var(--color-text); padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">${thread.messages.length} 則訊息</span>
+          </div>
+        </div>
+      `;
+    }).join('');
 
   } catch (error) {
-    console.error('Error loading expert messages:', error);
-    const messagesContainer = document.getElementById('expertMessages');
+    console.error('Error loading expert message threads:', error);
+    const messagesContainer = document.getElementById('expertMessageThreads');
     if (messagesContainer) {
-      messagesContainer.innerHTML = '<p style="color: var(--color-error);">載入通知失敗</p>';
+      messagesContainer.innerHTML = '<p style="color: var(--color-error);">載入訊息失敗</p>';
     }
   }
 }
 
-// Load corporate messages from localStorage
+// Load corporate message threads from localStorage
 async function loadCorporateMessages() {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -2124,43 +2103,57 @@ async function loadCorporateMessages() {
       return;
     }
 
-    // Get messages for this corporate from localStorage
-    const corporateMessages = JSON.parse(localStorage.getItem('corporateMessages') || '[]');
-    const userMessages = corporateMessages.filter(message => 
-      message.receiverId === currentUser.id
+    // Get message threads for this corporate from localStorage
+    const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+    const userThreads = messageThreads.filter(thread => 
+      thread.expertId === currentUser.id || thread.corporateId === currentUser.id
     );
     
-    const messagesContainer = document.getElementById('corporateMessages');
+    const messagesContainer = document.getElementById('corporateMessageThreads');
     if (!messagesContainer) return;
 
-    if (userMessages.length === 0) {
-      messagesContainer.innerHTML = '<p style="color: var(--color-text-secondary);">您還沒有收到任何訊息</p>';
+    if (userThreads.length === 0) {
+      messagesContainer.innerHTML = '<p style="color: var(--color-text-secondary);">您還沒有任何訊息對話</p>';
       return;
     }
 
-    messagesContainer.innerHTML = userMessages.map(message => `
-      <div class="message-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); ${!message.isRead ? 'border-left: 4px solid var(--color-primary);' : ''}">
-        <div class="message-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
-          <div>
-            <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${message.subject || '新訊息'}</div>
-            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">來自: ${message.senderName}</div>
+    messagesContainer.innerHTML = userThreads.map(thread => {
+      const lastMessage = thread.messages[thread.messages.length - 1];
+      const unreadCount = thread.messages.filter(msg => 
+        msg.receiverId === currentUser.id && !msg.isRead
+      ).length;
+      
+      return `
+        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="openMessageThread('${thread.id}')">
+          <div class="thread-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+            <div>
+              <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${thread.title}</div>
+              <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">與: ${thread.corporateId === currentUser.id ? thread.expertName : thread.corporateName}</div>
+              ${thread.taskTitle ? `<div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">任務: ${thread.taskTitle}</div>` : ''}
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                ${new Date(lastMessage.createdAt).toLocaleDateString('zh-TW')}
+              </div>
+              ${unreadCount > 0 ? `<div style="background: var(--color-primary); color: white; padding: var(--space-2) var(--space-6); border-radius: var(--radius-full); font-size: var(--font-size-xs); margin-top: var(--space-4);">${unreadCount}</div>` : ''}
+            </div>
           </div>
-          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-            ${new Date(message.createdAt).toLocaleDateString('zh-TW')}
+          <div class="thread-preview" style="margin-bottom: var(--space-12);">
+            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ${lastMessage.content.substring(0, 100)}${lastMessage.content.length > 100 ? '...' : ''}
+            </div>
+          </div>
+          <div class="thread-actions" style="display: flex; gap: var(--space-8);">
+            ${thread.type === 'interview' ? '<span style="background: var(--color-primary); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">面試對話</span>' : ''}
+            <span style="background: var(--color-bg-2); color: var(--color-text); padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">${thread.messages.length} 則訊息</span>
           </div>
         </div>
-        <div class="message-content" style="margin-bottom: var(--space-12);">
-          <div style="white-space: pre-line; line-height: 1.6;">${message.content}</div>
-        </div>
-        <div class="message-actions" style="display: flex; gap: var(--space-8);">
-          ${!message.isRead ? '<span style="background: var(--color-warning); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">未讀</span>' : ''}
-        </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
   } catch (error) {
-    console.error('Error loading corporate messages:', error);
-    const messagesContainer = document.getElementById('corporateMessages');
+    console.error('Error loading corporate message threads:', error);
+    const messagesContainer = document.getElementById('corporateMessageThreads');
     if (messagesContainer) {
       messagesContainer.innerHTML = '<p style="color: var(--color-error);">載入訊息失敗</p>';
     }
@@ -2250,6 +2243,115 @@ function sendCorporateMessage() {
   document.getElementById('corporateMessageRecipient').value = '';
   document.getElementById('corporateMessageSubject').value = '';
   document.getElementById('corporateMessageContent').value = '';
+  
+  showNotification('訊息已發送！', 'success');
+}
+
+// Open message thread modal
+function openMessageThread(threadId) {
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  if (!currentUser) {
+    showNotification('請先登入', 'error');
+    return;
+  }
+
+  const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+  const thread = messageThreads.find(t => t.id === threadId);
+  
+  if (!thread) {
+    showNotification('找不到此對話', 'error');
+    return;
+  }
+
+  // Set modal title
+  document.getElementById('messageThreadTitle').textContent = thread.title;
+  
+  // Store current thread ID for sending messages
+  document.getElementById('messageThreadModal').dataset.threadId = threadId;
+  
+  // Display messages
+  const content = document.getElementById('messageThreadContent');
+  content.innerHTML = thread.messages.map(message => {
+    const isOwnMessage = message.senderId === currentUser.id;
+    return `
+      <div class="message-bubble" style="margin-bottom: var(--space-16); display: flex; ${isOwnMessage ? 'justify-content: flex-end;' : 'justify-content: flex-start;'}">
+        <div style="max-width: 70%; ${isOwnMessage ? 'background: var(--color-primary); color: white;' : 'background: var(--color-surface); color: var(--color-text);'} padding: var(--space-12); border-radius: var(--radius-base);">
+          <div style="font-size: var(--font-size-sm); opacity: 0.8; margin-bottom: var(--space-4);">
+            ${message.senderName} • ${new Date(message.createdAt).toLocaleString('zh-TW')}
+          </div>
+          <div style="white-space: pre-line; line-height: 1.5;">${message.content}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Scroll to bottom
+  content.scrollTop = content.scrollHeight;
+  
+  // Mark messages as read
+  thread.messages.forEach(message => {
+    if (message.receiverId === currentUser.id) {
+      message.isRead = true;
+    }
+  });
+  
+  // Update localStorage
+  localStorage.setItem('messageThreads', JSON.stringify(messageThreads));
+  
+  // Open modal
+  openModal('messageThreadModal');
+}
+
+// Send message in thread
+function sendThreadMessage() {
+  const threadId = document.getElementById('messageThreadModal').dataset.threadId;
+  const content = document.getElementById('newMessageContent').value.trim();
+  
+  if (!content) {
+    showNotification('請輸入訊息內容', 'error');
+    return;
+  }
+  
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  if (!currentUser) {
+    showNotification('請先登入', 'error');
+    return;
+  }
+  
+  const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+  const thread = messageThreads.find(t => t.id === threadId);
+  
+  if (!thread) {
+    showNotification('找不到此對話', 'error');
+    return;
+  }
+  
+  // Determine receiver
+  const receiverId = thread.expertId === currentUser.id ? thread.corporateId : thread.expertId;
+  const receiverName = thread.expertId === currentUser.id ? thread.corporateName : thread.expertName;
+  
+  // Create new message
+  const newMessage = {
+    id: Date.now(),
+    senderId: currentUser.id,
+    senderName: currentUser.name,
+    receiverId: receiverId,
+    content: content,
+    createdAt: new Date().toISOString(),
+    isRead: false
+  };
+  
+  // Add message to thread
+  thread.messages.push(newMessage);
+  
+  // Update localStorage
+  localStorage.setItem('messageThreads', JSON.stringify(messageThreads));
+  
+  // Clear input
+  document.getElementById('newMessageContent').value = '';
+  
+  // Refresh the thread display
+  openMessageThread(threadId);
   
   showNotification('訊息已發送！', 'success');
 }
@@ -3024,27 +3126,8 @@ async function populateExpertPortal(content) {
         
         <div class="profile-section">
           <h3>我的訊息</h3>
-          <div id="expertMessages" style="display: grid; gap: var(--space-12);">
+          <div id="expertMessageThreads" style="display: grid; gap: var(--space-12);">
             <p style="color: var(--color-text-secondary);">載入訊息中...</p>
-          </div>
-        </div>
-        
-        <div class="profile-section">
-          <h3>發送訊息</h3>
-          <div style="background: var(--color-surface); padding: var(--space-16); border-radius: var(--radius-base); border: 1px solid var(--color-border);">
-            <div style="margin-bottom: var(--space-12);">
-              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">收件人</label>
-              <input type="text" id="messageRecipient" placeholder="輸入收件人姓名或公司名稱" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
-            </div>
-            <div style="margin-bottom: var(--space-12);">
-              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">主題</label>
-              <input type="text" id="messageSubject" placeholder="訊息主題" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
-            </div>
-            <div style="margin-bottom: var(--space-12);">
-              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">內容</label>
-              <textarea id="messageContent" placeholder="輸入您的訊息內容..." rows="4" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm); resize: vertical;"></textarea>
-            </div>
-            <button onclick="sendExpertMessage()" class="btn btn--primary" style="width: 100%;">發送訊息</button>
           </div>
         </div>
         
@@ -3188,27 +3271,8 @@ function populateClientPortal(content) {
         
         <div class="profile-section">
           <h3>我的訊息</h3>
-          <div id="corporateMessages" style="display: grid; gap: var(--space-12);">
+          <div id="corporateMessageThreads" style="display: grid; gap: var(--space-12);">
             <p style="color: var(--color-text-secondary);">載入訊息中...</p>
-          </div>
-        </div>
-        
-        <div class="profile-section">
-          <h3>發送訊息</h3>
-          <div style="background: var(--color-surface); padding: var(--space-16); border-radius: var(--radius-base); border: 1px solid var(--color-border);">
-            <div style="margin-bottom: var(--space-12);">
-              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">收件人</label>
-              <input type="text" id="corporateMessageRecipient" placeholder="輸入收件人姓名" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
-            </div>
-            <div style="margin-bottom: var(--space-12);">
-              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">主題</label>
-              <input type="text" id="corporateMessageSubject" placeholder="訊息主題" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
-            </div>
-            <div style="margin-bottom: var(--space-12);">
-              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">內容</label>
-              <textarea id="corporateMessageContent" placeholder="輸入您的訊息內容..." rows="4" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm); resize: vertical;"></textarea>
-            </div>
-            <button onclick="sendCorporateMessage()" class="btn btn--primary" style="width: 100%;">發送訊息</button>
           </div>
         </div>
         
@@ -3303,6 +3367,8 @@ window.acceptApplication = acceptApplication;
 window.rejectApplication = rejectApplication;
 window.sendExpertMessage = sendExpertMessage;
 window.sendCorporateMessage = sendCorporateMessage;
+window.openMessageThread = openMessageThread;
+window.sendThreadMessage = sendThreadMessage;
 
 // Task Carousel Functions
 function initializeTaskCarousel() {
