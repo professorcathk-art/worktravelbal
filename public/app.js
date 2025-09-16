@@ -2336,6 +2336,24 @@ function openMessageThread(threadId) {
   console.log('About to open modal messageThread');
   openModal('messageThread');
   console.log('Modal openModal called');
+  
+  // Fallback: if modal doesn't open, try direct manipulation
+  setTimeout(() => {
+    const modal = document.getElementById('messageThreadModal');
+    if (modal && modal.classList.contains('hidden')) {
+      console.log('Modal still hidden, trying direct manipulation');
+      modal.classList.remove('hidden');
+    }
+  }, 100);
+  
+  // Alternative fallback: create a simple popup window
+  setTimeout(() => {
+    const modal = document.getElementById('messageThreadModal');
+    if (modal && modal.classList.contains('hidden')) {
+      console.log('Creating alternative popup window');
+      showMessageThreadPopup(thread);
+    }
+  }, 200);
 }
 
 // Send message in thread
@@ -2390,6 +2408,117 @@ function sendThreadMessage() {
   openMessageThread(threadId);
   
   showNotification('訊息已發送！', 'success');
+}
+
+// Alternative popup window for message threads (fallback)
+function showMessageThreadPopup(thread) {
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  
+  // Create popup content
+  const popupContent = `
+    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+      <div style="background: white; border-radius: 8px; padding: 20px; max-width: 600px; max-height: 80vh; overflow-y: auto; position: relative;">
+        <button onclick="closeMessagePopup()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+        <h3 style="margin-bottom: 20px;">${thread.title}</h3>
+        <div id="popupMessageContent" style="margin-bottom: 20px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 15px; border-radius: 4px;">
+          ${thread.messages.map(message => {
+            const isOwnMessage = message.senderId === currentUser.id;
+            return `
+              <div style="margin-bottom: 15px; ${isOwnMessage ? 'text-align: right;' : 'text-align: left;'}">
+                <div style="background: ${isOwnMessage ? '#007bff' : '#f8f9fa'}; color: ${isOwnMessage ? 'white' : 'black'}; padding: 10px; border-radius: 8px; display: inline-block; max-width: 80%;">
+                  <div style="font-size: 12px; opacity: 0.8; margin-bottom: 5px;">
+                    ${message.senderName} • ${new Date(message.createdAt).toLocaleString('zh-TW')}
+                  </div>
+                  <div style="white-space: pre-line;">${message.content}</div>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <textarea id="popupNewMessage" placeholder="輸入您的訊息..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical;" rows="2"></textarea>
+          <button onclick="sendPopupMessage('${thread.id}')" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">發送</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Add to page
+  const popup = document.createElement('div');
+  popup.id = 'messageThreadPopup';
+  popup.innerHTML = popupContent;
+  document.body.appendChild(popup);
+  
+  // Mark messages as read
+  thread.messages.forEach(message => {
+    if (message.receiverId === currentUser.id) {
+      message.isRead = true;
+    }
+  });
+  
+  // Update localStorage
+  let messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+  const threadIndex = messageThreads.findIndex(t => t.id === thread.id);
+  if (threadIndex !== -1) {
+    messageThreads[threadIndex] = thread;
+    localStorage.setItem('messageThreads', JSON.stringify(messageThreads));
+  }
+}
+
+// Close popup window
+function closeMessagePopup() {
+  const popup = document.getElementById('messageThreadPopup');
+  if (popup) {
+    popup.remove();
+  }
+}
+
+// Send message in popup
+function sendPopupMessage(threadId) {
+  const content = document.getElementById('popupNewMessage').value.trim();
+  
+  if (!content) {
+    alert('請輸入訊息內容');
+    return;
+  }
+  
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+  const thread = messageThreads.find(t => t.id === threadId);
+  
+  if (!thread) {
+    alert('找不到此對話');
+    return;
+  }
+  
+  // Determine receiver
+  const receiverId = thread.expertId === currentUser.id ? thread.corporateId : thread.expertId;
+  
+  // Create new message
+  const newMessage = {
+    id: Date.now(),
+    senderId: currentUser.id,
+    senderName: currentUser.name,
+    receiverId: receiverId,
+    content: content,
+    createdAt: new Date().toISOString(),
+    isRead: false
+  };
+  
+  // Add message to thread
+  thread.messages.push(newMessage);
+  
+  // Update localStorage
+  localStorage.setItem('messageThreads', JSON.stringify(messageThreads));
+  
+  // Clear input
+  document.getElementById('popupNewMessage').value = '';
+  
+  // Refresh popup
+  closeMessagePopup();
+  showMessageThreadPopup(thread);
+  
+  alert('訊息已發送！');
 }
 
 // Load user saved tasks from API
@@ -3405,6 +3534,8 @@ window.sendExpertMessage = sendExpertMessage;
 window.sendCorporateMessage = sendCorporateMessage;
 window.openMessageThread = openMessageThread;
 window.sendThreadMessage = sendThreadMessage;
+window.closeMessagePopup = closeMessagePopup;
+window.sendPopupMessage = sendPopupMessage;
 
 // Task Carousel Functions
 function initializeTaskCarousel() {
