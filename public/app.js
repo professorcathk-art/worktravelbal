@@ -858,52 +858,49 @@ async function handleInterviewScheduling() {
       return;
     }
     
-    // Create interview message content
-    const interviewMessage = `
-面試安排通知
-
-親愛的專家，
-
-我們很高興通知您，我們希望與您安排面試來進一步討論這個項目。
-
-面試詳情：
-• 日期：${date}
-• 時間：${time}
-• 方式：${type}
-• 地點：${location}
-${notes ? `• 備註：${notes}` : ''}
-
-請確認您是否能夠參加此次面試。如有任何問題，請隨時與我們聯繫。
-
-期待與您的面試！
-
-此致
-${currentUser.name}
-    `.trim();
+    // Store interview data locally (since messages table doesn't exist yet)
+    const interviewData = {
+      id: Date.now(),
+      applicationId: applicationId,
+      taskId: taskId,
+      expertId: expertId,
+      employerId: currentUser.id,
+      employerName: currentUser.name,
+      date: date,
+      time: time,
+      type: type,
+      location: location,
+      notes: notes,
+      createdAt: new Date().toISOString(),
+      status: 'scheduled'
+    };
     
-    // Send interview message to expert
-    const messageResponse = await fetch('/api/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        sender_id: currentUser.id,
-        receiver_id: expertId,
-        task_id: taskId,
-        application_id: applicationId,
-        subject: '面試安排通知',
-        content: interviewMessage,
-        message_type: 'interview_invite'
-      })
-    });
+    // Store in localStorage for now
+    let interviews = JSON.parse(localStorage.getItem('scheduledInterviews') || '[]');
+    interviews.push(interviewData);
+    localStorage.setItem('scheduledInterviews', JSON.stringify(interviews));
     
-    if (!messageResponse.ok) {
-      const errorData = await messageResponse.json();
-      throw new Error(errorData.error || 'Failed to send interview message');
-    }
+    // Also store as a notification for the expert
+    let expertNotifications = JSON.parse(localStorage.getItem('expertNotifications') || '[]');
+    const notification = {
+      id: Date.now(),
+      type: 'interview_invite',
+      expertId: expertId,
+      applicationId: applicationId,
+      taskId: taskId,
+      employerName: currentUser.name,
+      date: date,
+      time: time,
+      type: type,
+      location: location,
+      notes: notes,
+      createdAt: new Date().toISOString(),
+      isRead: false
+    };
+    expertNotifications.push(notification);
+    localStorage.setItem('expertNotifications', JSON.stringify(expertNotifications));
     
-    // Update application status to "interview_scheduled" (without interview columns)
+    // Update application status to "interview_scheduled"
     const response = await fetch('/api/task-applications', {
       method: 'PATCH',
       headers: {
@@ -916,7 +913,7 @@ ${currentUser.name}
     });
     
     if (response.ok) {
-      showNotification('面試已安排並通知專家！', 'success');
+      showNotification('面試已安排！專家將在他們的個人管理中心看到面試通知。', 'success');
       closeModal('interviewModal');
       
       // Clear form
@@ -2036,7 +2033,7 @@ async function loadUserApplications() {
   }
 }
 
-// Load expert messages from API
+// Load expert notifications from localStorage
 async function loadExpertMessages() {
   try {
     const currentUser = JSON.parse(localStorage.getItem('currentUser'));
@@ -2045,49 +2042,71 @@ async function loadExpertMessages() {
       return;
     }
 
-    const response = await fetch(`/api/messages?user_id=${currentUser.id}`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch messages');
-    }
-
-    const data = await response.json();
-    const messages = data.messages || [];
+    // Get notifications for this expert from localStorage
+    const expertNotifications = JSON.parse(localStorage.getItem('expertNotifications') || '[]');
+    const userNotifications = expertNotifications.filter(notification => 
+      notification.expertId === currentUser.id
+    );
     
     const messagesContainer = document.getElementById('expertMessages');
     if (!messagesContainer) return;
 
-    if (messages.length === 0) {
-      messagesContainer.innerHTML = '<p style="color: var(--color-text-secondary);">您還沒有收到任何訊息</p>';
+    if (userNotifications.length === 0) {
+      messagesContainer.innerHTML = '<p style="color: var(--color-text-secondary);">您還沒有收到任何通知</p>';
       return;
     }
 
-    messagesContainer.innerHTML = messages.map(message => `
-      <div class="message-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); ${!message.is_read ? 'border-left: 4px solid var(--color-primary);' : ''}">
-        <div class="message-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
-          <div>
-            <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${message.subject || '新訊息'}</div>
-            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">來自: ${message.sender_name}</div>
-            ${message.task_title ? `<div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">任務: ${message.task_title}</div>` : ''}
+    messagesContainer.innerHTML = userNotifications.map(notification => {
+      if (notification.type === 'interview_invite') {
+        return `
+          <div class="message-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); ${!notification.isRead ? 'border-left: 4px solid var(--color-primary);' : ''}">
+            <div class="message-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+              <div>
+                <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">面試安排通知</div>
+                <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">來自: ${notification.employerName}</div>
+              </div>
+              <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                ${new Date(notification.createdAt).toLocaleDateString('zh-TW')}
+              </div>
+            </div>
+            <div class="message-content" style="margin-bottom: var(--space-12);">
+              <div style="white-space: pre-line; line-height: 1.6;">
+面試安排通知
+
+親愛的專家，
+
+我們很高興通知您，我們希望與您安排面試來進一步討論這個項目。
+
+面試詳情：
+• 日期：${notification.date}
+• 時間：${notification.time}
+• 方式：${notification.type}
+• 地點：${notification.location}
+${notification.notes ? `• 備註：${notification.notes}` : ''}
+
+請確認您是否能夠參加此次面試。如有任何問題，請隨時與我們聯繫。
+
+期待與您的面試！
+
+此致
+${notification.employerName}
+              </div>
+            </div>
+            <div class="message-actions" style="display: flex; gap: var(--space-8);">
+              <span style="background: var(--color-primary); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">面試邀請</span>
+              ${!notification.isRead ? '<span style="background: var(--color-warning); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">未讀</span>' : ''}
+            </div>
           </div>
-          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
-            ${new Date(message.created_at).toLocaleDateString('zh-TW')}
-          </div>
-        </div>
-        <div class="message-content" style="margin-bottom: var(--space-12);">
-          <div style="white-space: pre-line; line-height: 1.6;">${message.content}</div>
-        </div>
-        <div class="message-actions" style="display: flex; gap: var(--space-8);">
-          ${message.message_type === 'interview_invite' ? '<span style="background: var(--color-primary); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">面試邀請</span>' : ''}
-          ${!message.is_read ? '<span style="background: var(--color-warning); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">未讀</span>' : ''}
-        </div>
-      </div>
-    `).join('');
+        `;
+      }
+      return '';
+    }).filter(html => html).join('');
 
   } catch (error) {
     console.error('Error loading expert messages:', error);
     const messagesContainer = document.getElementById('expertMessages');
     if (messagesContainer) {
-      messagesContainer.innerHTML = '<p style="color: var(--color-error);">載入訊息失敗</p>';
+      messagesContainer.innerHTML = '<p style="color: var(--color-error);">載入通知失敗</p>';
     }
   }
 }
