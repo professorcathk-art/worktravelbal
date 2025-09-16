@@ -900,33 +900,17 @@ async function handleInterviewScheduling() {
     expertNotifications.push(notification);
     localStorage.setItem('expertNotifications', JSON.stringify(expertNotifications));
     
-    // Update application status to "interview_scheduled"
-    const response = await fetch('/api/task-applications', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        application_id: applicationId,
-        status: 'interview_scheduled'
-      })
-    });
+    // Don't update application status - just use messaging system
+    showNotification('面試已安排！專家將在他們的個人管理中心看到面試通知。', 'success');
+    closeModal('interviewModal');
     
-    if (response.ok) {
-      showNotification('面試已安排！專家將在他們的個人管理中心看到面試通知。', 'success');
-      closeModal('interviewModal');
-      
-      // Clear form
-      document.getElementById('interviewForm').reset();
-      
-      // Refresh the applications view
-      const taskId = document.getElementById('taskApplicationsModal').dataset.taskId;
-      if (taskId) {
-        viewTaskApplications(taskId);
-      }
-    } else {
-      const error = await response.json();
-      showNotification('安排面試失敗：' + (error.error || '請稍後再試'), 'error');
+    // Clear form
+    document.getElementById('interviewForm').reset();
+    
+    // Refresh the applications view
+    const taskId = document.getElementById('taskApplicationsModal').dataset.taskId;
+    if (taskId) {
+      viewTaskApplications(taskId);
     }
   } catch (error) {
     console.error('Error scheduling interview:', error);
@@ -2098,6 +2082,26 @@ ${notification.employerName}
             </div>
           </div>
         `;
+      } else if (notification.type === 'general_message') {
+        return `
+          <div class="message-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); ${!notification.isRead ? 'border-left: 4px solid var(--color-primary);' : ''}">
+            <div class="message-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+              <div>
+                <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${notification.subject || '新訊息'}</div>
+                <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">來自: ${notification.senderName}</div>
+              </div>
+              <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+                ${new Date(notification.createdAt).toLocaleDateString('zh-TW')}
+              </div>
+            </div>
+            <div class="message-content" style="margin-bottom: var(--space-12);">
+              <div style="white-space: pre-line; line-height: 1.6;">${notification.content}</div>
+            </div>
+            <div class="message-actions" style="display: flex; gap: var(--space-8);">
+              ${!notification.isRead ? '<span style="background: var(--color-warning); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">未讀</span>' : ''}
+            </div>
+          </div>
+        `;
       }
       return '';
     }).filter(html => html).join('');
@@ -2109,6 +2113,145 @@ ${notification.employerName}
       messagesContainer.innerHTML = '<p style="color: var(--color-error);">載入通知失敗</p>';
     }
   }
+}
+
+// Load corporate messages from localStorage
+async function loadCorporateMessages() {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser || !currentUser.id) {
+      console.log('No current user for loading corporate messages');
+      return;
+    }
+
+    // Get messages for this corporate from localStorage
+    const corporateMessages = JSON.parse(localStorage.getItem('corporateMessages') || '[]');
+    const userMessages = corporateMessages.filter(message => 
+      message.receiverId === currentUser.id
+    );
+    
+    const messagesContainer = document.getElementById('corporateMessages');
+    if (!messagesContainer) return;
+
+    if (userMessages.length === 0) {
+      messagesContainer.innerHTML = '<p style="color: var(--color-text-secondary);">您還沒有收到任何訊息</p>';
+      return;
+    }
+
+    messagesContainer.innerHTML = userMessages.map(message => `
+      <div class="message-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); ${!message.isRead ? 'border-left: 4px solid var(--color-primary);' : ''}">
+        <div class="message-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+          <div>
+            <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${message.subject || '新訊息'}</div>
+            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">來自: ${message.senderName}</div>
+          </div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+            ${new Date(message.createdAt).toLocaleDateString('zh-TW')}
+          </div>
+        </div>
+        <div class="message-content" style="margin-bottom: var(--space-12);">
+          <div style="white-space: pre-line; line-height: 1.6;">${message.content}</div>
+        </div>
+        <div class="message-actions" style="display: flex; gap: var(--space-8);">
+          ${!message.isRead ? '<span style="background: var(--color-warning); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">未讀</span>' : ''}
+        </div>
+      </div>
+    `).join('');
+
+  } catch (error) {
+    console.error('Error loading corporate messages:', error);
+    const messagesContainer = document.getElementById('corporateMessages');
+    if (messagesContainer) {
+      messagesContainer.innerHTML = '<p style="color: var(--color-error);">載入訊息失敗</p>';
+    }
+  }
+}
+
+// Send message from expert
+function sendExpertMessage() {
+  const recipient = document.getElementById('messageRecipient').value.trim();
+  const subject = document.getElementById('messageSubject').value.trim();
+  const content = document.getElementById('messageContent').value.trim();
+  
+  if (!recipient || !subject || !content) {
+    showNotification('請填寫所有欄位', 'error');
+    return;
+  }
+  
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  if (!currentUser) {
+    showNotification('請先登入', 'error');
+    return;
+  }
+  
+  // Store message in localStorage
+  const message = {
+    id: Date.now(),
+    senderId: currentUser.id,
+    senderName: currentUser.name,
+    receiverName: recipient,
+    subject: subject,
+    content: content,
+    createdAt: new Date().toISOString(),
+    isRead: false
+  };
+  
+  // Add to corporate messages (since experts send to corporates)
+  let corporateMessages = JSON.parse(localStorage.getItem('corporateMessages') || '[]');
+  corporateMessages.push(message);
+  localStorage.setItem('corporateMessages', JSON.stringify(corporateMessages));
+  
+  // Clear form
+  document.getElementById('messageRecipient').value = '';
+  document.getElementById('messageSubject').value = '';
+  document.getElementById('messageContent').value = '';
+  
+  showNotification('訊息已發送！', 'success');
+}
+
+// Send message from corporate
+function sendCorporateMessage() {
+  const recipient = document.getElementById('corporateMessageRecipient').value.trim();
+  const subject = document.getElementById('corporateMessageSubject').value.trim();
+  const content = document.getElementById('corporateMessageContent').value.trim();
+  
+  if (!recipient || !subject || !content) {
+    showNotification('請填寫所有欄位', 'error');
+    return;
+  }
+  
+  const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+  if (!currentUser) {
+    showNotification('請先登入', 'error');
+    return;
+  }
+  
+  // Store message in localStorage
+  const message = {
+    id: Date.now(),
+    senderId: currentUser.id,
+    senderName: currentUser.name,
+    receiverName: recipient,
+    subject: subject,
+    content: content,
+    createdAt: new Date().toISOString(),
+    isRead: false
+  };
+  
+  // Add to expert notifications (since corporates send to experts)
+  let expertNotifications = JSON.parse(localStorage.getItem('expertNotifications') || '[]');
+  expertNotifications.push({
+    ...message,
+    type: 'general_message'
+  });
+  localStorage.setItem('expertNotifications', JSON.stringify(expertNotifications));
+  
+  // Clear form
+  document.getElementById('corporateMessageRecipient').value = '';
+  document.getElementById('corporateMessageSubject').value = '';
+  document.getElementById('corporateMessageContent').value = '';
+  
+  showNotification('訊息已發送！', 'success');
 }
 
 // Load user saved tasks from API
@@ -2887,6 +3030,25 @@ async function populateExpertPortal(content) {
         </div>
         
         <div class="profile-section">
+          <h3>發送訊息</h3>
+          <div style="background: var(--color-surface); padding: var(--space-16); border-radius: var(--radius-base); border: 1px solid var(--color-border);">
+            <div style="margin-bottom: var(--space-12);">
+              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">收件人</label>
+              <input type="text" id="messageRecipient" placeholder="輸入收件人姓名或公司名稱" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+            </div>
+            <div style="margin-bottom: var(--space-12);">
+              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">主題</label>
+              <input type="text" id="messageSubject" placeholder="訊息主題" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+            </div>
+            <div style="margin-bottom: var(--space-12);">
+              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">內容</label>
+              <textarea id="messageContent" placeholder="輸入您的訊息內容..." rows="4" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm); resize: vertical;"></textarea>
+            </div>
+            <button onclick="sendExpertMessage()" class="btn btn--primary" style="width: 100%;">發送訊息</button>
+          </div>
+        </div>
+        
+        <div class="profile-section">
           <h3>收藏的任務 (${userSavedTasks.length})</h3>
           ${userSavedTasks.length === 0 ? '<p style="color: var(--color-text-secondary);">您還沒有收藏任何任務</p>' : ''}
           <div style="display: grid; gap: var(--space-12);">
@@ -3025,6 +3187,32 @@ function populateClientPortal(content) {
         </div>
         
         <div class="profile-section">
+          <h3>我的訊息</h3>
+          <div id="corporateMessages" style="display: grid; gap: var(--space-12);">
+            <p style="color: var(--color-text-secondary);">載入訊息中...</p>
+          </div>
+        </div>
+        
+        <div class="profile-section">
+          <h3>發送訊息</h3>
+          <div style="background: var(--color-surface); padding: var(--space-16); border-radius: var(--radius-base); border: 1px solid var(--color-border);">
+            <div style="margin-bottom: var(--space-12);">
+              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">收件人</label>
+              <input type="text" id="corporateMessageRecipient" placeholder="輸入收件人姓名" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+            </div>
+            <div style="margin-bottom: var(--space-12);">
+              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">主題</label>
+              <input type="text" id="corporateMessageSubject" placeholder="訊息主題" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm);">
+            </div>
+            <div style="margin-bottom: var(--space-12);">
+              <label style="display: block; margin-bottom: var(--space-4); font-weight: var(--font-weight-medium);">內容</label>
+              <textarea id="corporateMessageContent" placeholder="輸入您的訊息內容..." rows="4" style="width: 100%; padding: var(--space-8); border: 1px solid var(--color-border); border-radius: var(--radius-sm); resize: vertical;"></textarea>
+            </div>
+            <button onclick="sendCorporateMessage()" class="btn btn--primary" style="width: 100%;">發送訊息</button>
+          </div>
+        </div>
+        
+        <div class="profile-section">
           <h3>企業統計</h3>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-16);">
             <div style="text-align: center; padding: var(--space-16); background: var(--color-bg-2); border-radius: var(--radius-base);">
@@ -3040,6 +3228,7 @@ function populateClientPortal(content) {
   // Load tasks after rendering the portal
   setTimeout(() => {
     loadMyTasks();
+    loadCorporateMessages();
   }, 100);
 }
 
@@ -3112,6 +3301,8 @@ window.editTask = editTask;
 window.scheduleInterview = scheduleInterview;
 window.acceptApplication = acceptApplication;
 window.rejectApplication = rejectApplication;
+window.sendExpertMessage = sendExpertMessage;
+window.sendCorporateMessage = sendCorporateMessage;
 
 // Task Carousel Functions
 function initializeTaskCarousel() {
