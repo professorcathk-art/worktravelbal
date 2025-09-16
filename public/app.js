@@ -708,7 +708,7 @@ function displayTaskApplications(taskId, applications) {
           <button class="btn btn--outline btn--sm" onclick="rejectApplication('${app.id}')">
             拒絕
           </button>
-          <button class="btn btn--outline btn--sm" onclick="scheduleInterview('${app.id}', '${app.expert_name}')">
+          <button class="btn btn--outline btn--sm" onclick="scheduleInterview('${app.id}', '${app.expert_name}', '${app.expert_id}')">
             安排面試
           </button>
           <button class="btn btn--primary btn--sm" onclick="acceptApplication('${app.id}')">
@@ -746,11 +746,13 @@ function getApplicationStatusText(status) {
   }
 }
 
-function scheduleInterview(applicationId, applicantName) {
-  console.log('Schedule interview for application:', applicationId);
+function scheduleInterview(applicationId, applicantName, expertId) {
+  console.log('Schedule interview for application:', applicationId, 'expert:', expertId);
   
-  // Store the application ID for the form submission
+  // Store the application ID, expert ID, and task ID for the form submission
   document.getElementById('interviewModal').dataset.applicationId = applicationId;
+  document.getElementById('interviewModal').dataset.expertId = expertId;
+  document.getElementById('interviewModal').dataset.taskId = document.getElementById('taskApplicationsModal').dataset.taskId;
   document.getElementById('interviewApplicantName').value = applicantName;
   
   // Set default date to tomorrow
@@ -835,6 +837,8 @@ async function rejectApplication(applicationId) {
 
 async function handleInterviewScheduling() {
   const applicationId = document.getElementById('interviewModal').dataset.applicationId;
+  const taskId = document.getElementById('interviewModal').dataset.taskId;
+  const expertId = document.getElementById('interviewModal').dataset.expertId;
   const date = document.getElementById('interviewDate').value;
   const time = document.getElementById('interviewTime').value;
   const type = document.getElementById('interviewType').value;
@@ -847,24 +851,59 @@ async function handleInterviewScheduling() {
   }
   
   try {
-    // For now, we'll store the interview data locally and update the application status
-    // In a real app, this would be stored in the database
-    const interviewData = {
-      applicationId: applicationId,
-      date: date,
-      time: time,
-      type: type,
-      location: location,
-      notes: notes,
-      scheduledAt: new Date().toISOString()
-    };
+    // Get current user (employer)
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser) {
+      showNotification('請先登入', 'error');
+      return;
+    }
     
-    // Store interview data locally
-    let interviews = JSON.parse(localStorage.getItem('scheduledInterviews') || '[]');
-    interviews.push(interviewData);
-    localStorage.setItem('scheduledInterviews', JSON.stringify(interviews));
+    // Create interview message content
+    const interviewMessage = `
+面試安排通知
+
+親愛的專家，
+
+我們很高興通知您，我們希望與您安排面試來進一步討論這個項目。
+
+面試詳情：
+• 日期：${date}
+• 時間：${time}
+• 方式：${type}
+• 地點：${location}
+${notes ? `• 備註：${notes}` : ''}
+
+請確認您是否能夠參加此次面試。如有任何問題，請隨時與我們聯繫。
+
+期待與您的面試！
+
+此致
+${currentUser.name}
+    `.trim();
     
-    // Update application status to "interview_scheduled"
+    // Send interview message to expert
+    const messageResponse = await fetch('/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender_id: currentUser.id,
+        receiver_id: expertId,
+        task_id: taskId,
+        application_id: applicationId,
+        subject: '面試安排通知',
+        content: interviewMessage,
+        message_type: 'interview_invite'
+      })
+    });
+    
+    if (!messageResponse.ok) {
+      const errorData = await messageResponse.json();
+      throw new Error(errorData.error || 'Failed to send interview message');
+    }
+    
+    // Update application status to "interview_scheduled" (without interview columns)
     const response = await fetch('/api/task-applications', {
       method: 'PATCH',
       headers: {
@@ -872,17 +911,12 @@ async function handleInterviewScheduling() {
       },
       body: JSON.stringify({
         application_id: applicationId,
-        status: 'interview_scheduled',
-        interview_date: date,
-        interview_time: time,
-        interview_type: type,
-        interview_location: location,
-        interview_notes: notes
+        status: 'interview_scheduled'
       })
     });
     
     if (response.ok) {
-      showNotification('面試已安排！', 'success');
+      showNotification('面試已安排並通知專家！', 'success');
       closeModal('interviewModal');
       
       // Clear form
@@ -899,7 +933,7 @@ async function handleInterviewScheduling() {
     }
   } catch (error) {
     console.error('Error scheduling interview:', error);
-    showNotification('安排面試失敗：網絡錯誤', 'error');
+    showNotification('安排面試失敗：' + error.message, 'error');
   }
 }
 
@@ -2002,6 +2036,62 @@ async function loadUserApplications() {
   }
 }
 
+// Load expert messages from API
+async function loadExpertMessages() {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    if (!currentUser || !currentUser.id) {
+      console.log('No current user for loading messages');
+      return;
+    }
+
+    const response = await fetch(`/api/messages?user_id=${currentUser.id}`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch messages');
+    }
+
+    const data = await response.json();
+    const messages = data.messages || [];
+    
+    const messagesContainer = document.getElementById('expertMessages');
+    if (!messagesContainer) return;
+
+    if (messages.length === 0) {
+      messagesContainer.innerHTML = '<p style="color: var(--color-text-secondary);">您還沒有收到任何訊息</p>';
+      return;
+    }
+
+    messagesContainer.innerHTML = messages.map(message => `
+      <div class="message-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); ${!message.is_read ? 'border-left: 4px solid var(--color-primary);' : ''}">
+        <div class="message-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
+          <div>
+            <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${message.subject || '新訊息'}</div>
+            <div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">來自: ${message.sender_name}</div>
+            ${message.task_title ? `<div style="color: var(--color-text-secondary); font-size: var(--font-size-sm);">任務: ${message.task_title}</div>` : ''}
+          </div>
+          <div style="font-size: var(--font-size-sm); color: var(--color-text-secondary);">
+            ${new Date(message.created_at).toLocaleDateString('zh-TW')}
+          </div>
+        </div>
+        <div class="message-content" style="margin-bottom: var(--space-12);">
+          <div style="white-space: pre-line; line-height: 1.6;">${message.content}</div>
+        </div>
+        <div class="message-actions" style="display: flex; gap: var(--space-8);">
+          ${message.message_type === 'interview_invite' ? '<span style="background: var(--color-primary); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">面試邀請</span>' : ''}
+          ${!message.is_read ? '<span style="background: var(--color-warning); color: white; padding: var(--space-4) var(--space-8); border-radius: var(--radius-sm); font-size: var(--font-size-sm);">未讀</span>' : ''}
+        </div>
+      </div>
+    `).join('');
+
+  } catch (error) {
+    console.error('Error loading expert messages:', error);
+    const messagesContainer = document.getElementById('expertMessages');
+    if (messagesContainer) {
+      messagesContainer.innerHTML = '<p style="color: var(--color-error);">載入訊息失敗</p>';
+    }
+  }
+}
+
 // Load user saved tasks from API
 async function loadUserSavedTasks() {
   try {
@@ -2693,6 +2783,11 @@ async function populateExpertPortal(content) {
     // Continue with empty arrays if API calls fail
   }
   
+  // Load messages after the portal is populated
+  setTimeout(() => {
+    loadExpertMessages();
+  }, 100);
+  
   const profileComplete = calculateExpertProfileCompletion(currentUser);
   
   content.innerHTML = `
@@ -2763,6 +2858,13 @@ async function populateExpertPortal(content) {
               </div>
             </div>
           `).join('')}
+        </div>
+        
+        <div class="profile-section">
+          <h3>我的訊息</h3>
+          <div id="expertMessages" style="display: grid; gap: var(--space-12);">
+            <p style="color: var(--color-text-secondary);">載入訊息中...</p>
+          </div>
         </div>
         
         <div class="profile-section">
