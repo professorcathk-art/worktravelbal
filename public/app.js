@@ -860,6 +860,8 @@ async function handleInterviewScheduling() {
     
     // Create a message thread for interview scheduling
     const threadId = Date.now().toString();
+    console.log('Creating thread with ID:', threadId);
+    
     const interviewMessage = `
 面試安排通知
 
@@ -910,6 +912,8 @@ ${currentUser.name}
     let messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
     messageThreads.push(thread);
     localStorage.setItem('messageThreads', JSON.stringify(messageThreads));
+    console.log('Thread stored:', thread);
+    console.log('All threads after storage:', messageThreads);
     
     // Don't update application status - just use messaging system
     showNotification('面試已安排！專家將在他們的個人管理中心看到面試通知。', 'success');
@@ -2039,9 +2043,13 @@ async function loadExpertMessages() {
 
     // Get message threads for this expert from localStorage
     const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+    console.log('Loading expert threads, all threads:', messageThreads);
+    console.log('Current user ID:', currentUser.id);
+    
     const userThreads = messageThreads.filter(thread => 
       thread.expertId === currentUser.id || thread.corporateId === currentUser.id
     );
+    console.log('Filtered user threads:', userThreads);
     
     const messagesContainer = document.getElementById('expertMessageThreads');
     if (!messagesContainer) return;
@@ -2057,8 +2065,9 @@ async function loadExpertMessages() {
         msg.receiverId === currentUser.id && !msg.isRead
       ).length;
       
+      console.log('Generating expert thread card for thread:', thread.id);
       return `
-        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="openMessageThread('${thread.id}')">
+        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="console.log('Expert thread clicked:', '${thread.id}'); openMessageThread('${thread.id}')">
           <div class="thread-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
             <div>
               <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${thread.title}</div>
@@ -2105,9 +2114,13 @@ async function loadCorporateMessages() {
 
     // Get message threads for this corporate from localStorage
     const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+    console.log('Loading corporate threads, all threads:', messageThreads);
+    console.log('Current user ID:', currentUser.id);
+    
     const userThreads = messageThreads.filter(thread => 
       thread.expertId === currentUser.id || thread.corporateId === currentUser.id
     );
+    console.log('Filtered corporate threads:', userThreads);
     
     const messagesContainer = document.getElementById('corporateMessageThreads');
     if (!messagesContainer) return;
@@ -2123,8 +2136,9 @@ async function loadCorporateMessages() {
         msg.receiverId === currentUser.id && !msg.isRead
       ).length;
       
+      console.log('Generating corporate thread card for thread:', thread.id);
       return `
-        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="openMessageThread('${thread.id}')">
+        <div class="thread-card" style="padding: var(--space-16); background: var(--color-surface); border-radius: var(--radius-base); border: 1px solid var(--color-border); cursor: pointer; ${unreadCount > 0 ? 'border-left: 4px solid var(--color-primary);' : ''}" onclick="console.log('Corporate thread clicked:', '${thread.id}'); openMessageThread('${thread.id}')">
           <div class="thread-header" style="display: flex; justify-content: space-between; align-items: start; margin-bottom: var(--space-12);">
             <div>
               <div style="font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg);">${thread.title}</div>
@@ -2249,16 +2263,23 @@ function sendCorporateMessage() {
 
 // Open message thread modal
 function openMessageThread(threadId) {
+  console.log('openMessageThread called with threadId:', threadId);
+  
   const currentUser = JSON.parse(localStorage.getItem('currentUser'));
   if (!currentUser) {
+    console.log('No current user found');
     showNotification('請先登入', 'error');
     return;
   }
 
   const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
+  console.log('All threads:', messageThreads);
+  
   const thread = messageThreads.find(t => t.id === threadId);
+  console.log('Found thread:', thread);
   
   if (!thread) {
+    console.log('Thread not found for ID:', threadId);
     showNotification('找不到此對話', 'error');
     return;
   }
