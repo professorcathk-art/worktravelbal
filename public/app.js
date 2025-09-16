@@ -769,12 +769,13 @@ async function acceptApplication(applicationId) {
   console.log('Accept application:', applicationId);
   
   try {
-    const response = await fetch(`/api/task-applications/${applicationId}`, {
+    const response = await fetch('/api/task-applications', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        application_id: applicationId,
         status: 'accepted'
       })
     });
@@ -804,12 +805,13 @@ async function rejectApplication(applicationId) {
   }
   
   try {
-    const response = await fetch(`/api/task-applications/${applicationId}`, {
+    const response = await fetch('/api/task-applications', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        application_id: applicationId,
         status: 'rejected'
       })
     });
@@ -863,12 +865,13 @@ async function handleInterviewScheduling() {
     localStorage.setItem('scheduledInterviews', JSON.stringify(interviews));
     
     // Update application status to "interview_scheduled"
-    const response = await fetch(`/api/task-applications/${applicationId}`, {
+    const response = await fetch('/api/task-applications', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        application_id: applicationId,
         status: 'interview_scheduled',
         interview_date: date,
         interview_time: time,

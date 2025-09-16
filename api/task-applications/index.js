@@ -126,8 +126,8 @@ module.exports = async (req, res) => {
   } else if (req.method === 'PATCH') {
     // Update application status
     try {
-      const applicationId = req.url.split('/').pop();
       const { 
+        application_id,
         status, 
         interview_date, 
         interview_time, 
@@ -136,15 +136,15 @@ module.exports = async (req, res) => {
         interview_notes 
       } = req.body;
 
-      console.log('Updating application:', applicationId, 'with status:', status);
+      console.log('Updating application:', application_id, 'with status:', status);
 
-      if (!applicationId || !status) {
+      if (!application_id || !status) {
         return res.status(400).json({ error: 'Application ID and status are required' });
       }
 
       // Build update query dynamically based on provided fields
       let updateFields = ['status = $2', 'updated_at = NOW()'];
-      let values = [applicationId, status];
+      let values = [application_id, status];
       let paramIndex = 3;
 
       if (interview_date) {
