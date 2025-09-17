@@ -755,6 +755,17 @@ select.form-control {
   display: none;
 }
 
+/* Show mobile menu toggle on mobile */
+@media (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: block;
+  }
+  
+  .nav-links {
+    display: none;
+  }
+}
+
 .nav-content {
   display: flex;
   align-items: center;
@@ -2098,10 +2109,6 @@ select.form-control {
   
   .hero-stats {
     justify-content: center;
-  }
-  
-  .nav-links {
-    display: none;
   }
   
   .search-bar {

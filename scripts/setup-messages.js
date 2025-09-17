@@ -1,54 +1,53 @@
-const { Pool } = require('pg');
-const fs = require('fs');
-const path = require('path');
-
-// Database connection
-const connectionString = process.env.DATABASE_URL || 'postgresql://neondb_owner:npg_fzBCE2NK8ydi@ep-floral-fog-a1bvk2px-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require';
-
-const pool = new Pool({
-  connectionString: connectionString,
-  ssl: { rejectUnauthorized: false }
-});
+const { query, closePool } = require('../config/database');
 
 async function setupMessages() {
   try {
-    console.log('Setting up messages table and language support...');
+    console.log('🔄 Setting up message tables...');
     
-    // Read and execute the SQL file
-    const sqlPath = path.join(__dirname, '..', 'database', 'add_messages_table.sql');
-    const sql = fs.readFileSync(sqlPath, 'utf8');
+    // Create message_threads table
+    await query(`
+      CREATE TABLE IF NOT EXISTS message_threads (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          expert_id UUID NOT NULL REFERENCES users(id),
+          corporate_id UUID NOT NULL REFERENCES users(id),
+          task_id UUID REFERENCES tasks(id),
+          title VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW(),
+          updated_at TIMESTAMP DEFAULT NOW(),
+          UNIQUE(expert_id, corporate_id, task_id)
+      )
+    `);
+    console.log('✅ Created message_threads table');
     
-    await pool.query(sql);
+    // Create messages table
+    await query(`
+      CREATE TABLE IF NOT EXISTS messages (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          thread_id UUID NOT NULL REFERENCES message_threads(id) ON DELETE CASCADE,
+          sender_id UUID NOT NULL REFERENCES users(id),
+          receiver_id UUID NOT NULL REFERENCES users(id),
+          content TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT NOW(),
+          is_read BOOLEAN DEFAULT FALSE
+      )
+    `);
+    console.log('✅ Created messages table');
     
-    console.log('✅ Messages table and language support created successfully!');
+    // Create indexes
+    await query('CREATE INDEX IF NOT EXISTS idx_messages_thread_id ON messages(thread_id)');
+    await query('CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id)');
+    await query('CREATE INDEX IF NOT EXISTS idx_messages_receiver_id ON messages(receiver_id)');
+    await query('CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)');
+    await query('CREATE INDEX IF NOT EXISTS idx_message_threads_expert_id ON message_threads(expert_id)');
+    await query('CREATE INDEX IF NOT EXISTS idx_message_threads_corporate_id ON message_threads(corporate_id)');
+    console.log('✅ Created indexes');
     
-    // Add some sample expert languages for existing experts
-    console.log('Adding sample languages for existing experts...');
-    
-    const result = await pool.query('SELECT id FROM users WHERE user_type = \'expert\' LIMIT 5');
-    const expertIds = result.rows.map(row => row.id);
-    
-    for (const expertId of expertIds) {
-      // Add Chinese and English for each expert
-      await pool.query(`
-        INSERT INTO expert_languages (expert_id, language_id, proficiency_level)
-        SELECT $1, id, 'native' FROM languages WHERE name = '中文'
-        ON CONFLICT (expert_id, language_id) DO NOTHING
-      `, [expertId]);
-      
-      await pool.query(`
-        INSERT INTO expert_languages (expert_id, language_id, proficiency_level)
-        SELECT $1, id, 'fluent' FROM languages WHERE name = '英文'
-        ON CONFLICT (expert_id, language_id) DO NOTHING
-      `, [expertId]);
-    }
-    
-    console.log('✅ Sample languages added for existing experts!');
+    console.log('🎉 Message tables setup completed successfully!');
     
   } catch (error) {
-    console.error('❌ Error setting up messages:', error);
+    console.error('❌ Error setting up message tables:', error);
   } finally {
-    await pool.end();
+    await closePool();
   }
 }
 

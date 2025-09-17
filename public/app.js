@@ -296,7 +296,7 @@ function openPostTaskModal() {
   console.log('Opening post task modal');
   // Reset form for new task creation
   resetTaskForm();
-  openModal('postTaskModal');
+  openModal('postTask');
 }
 
 function resetTaskForm() {
@@ -996,7 +996,7 @@ function openTaskEditModal(task) {
     submitBtn.textContent = '更新任務';
   }
   
-  openModal('postTaskModal');
+  openModal('postTask');
 }
 
 // Initialize the application
@@ -2476,6 +2476,24 @@ function sendThreadMessage() {
   // Update localStorage
   localStorage.setItem('messageThreads', JSON.stringify(messageThreads));
   
+  // Try to save to database (if available)
+  try {
+    await fetch('/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        thread_id: threadId,
+        sender_id: currentUser.id,
+        receiver_id: receiverId,
+        content: content
+      })
+    });
+  } catch (error) {
+    console.log('Database save failed, using localStorage only:', error);
+  }
+  
   // Clear input
   document.getElementById('newMessageContent').value = '';
   
@@ -3787,12 +3805,12 @@ function showApplicationSuccessPopup() {
 // Forgot password and email code login functions
 function showForgotPasswordModal() {
   closeModal('loginModal');
-  openModal('forgotPasswordModal');
+  openModal('forgotPassword');
 }
 
 function showEmailCodeLoginModal() {
   closeModal('loginModal');
-  openModal('emailCodeLoginModal');
+  openModal('emailCodeLogin');
 }
 
 async function sendEmailCode() {
@@ -4296,6 +4314,10 @@ function displayTaskList(tasks, type) {
 }
 
 function getStatusText(status) {
+  if (!status || typeof status !== 'string') {
+    return '未知';
+  }
+  
   switch (status) {
     case 'open': return '開放中';
     case 'in_progress': return '進行中';
@@ -4531,12 +4553,12 @@ async function handleCorporateProfileUpdate(event) {
   event.preventDefault();
   
   const formData = {
-    name: document.getElementById('corporateName').value,
-    companySize: document.getElementById('corporateSize').value,
-    industry: document.getElementById('corporateIndustry').value,
-    phone: document.getElementById('corporatePhone').value,
-    wechat: document.getElementById('corporateWechat').value,
-    line: document.getElementById('corporateLine').value
+    name: (document.getElementById('corporateName')?.value || '').trim(),
+    companySize: (document.getElementById('corporateSize')?.value || '').trim(),
+    industry: (document.getElementById('corporateIndustry')?.value || '').trim(),
+    phone: (document.getElementById('corporatePhone')?.value || '').trim(),
+    wechat: (document.getElementById('corporateWechat')?.value || '').trim(),
+    line: (document.getElementById('corporateLine')?.value || '').trim()
   };
   
   // Handle file upload for business license
@@ -4689,7 +4711,7 @@ async function openProjectStatsModal() {
       loadProjectProgressTracking(tasks);
       
       console.log('Opening project stats modal');
-      openModal('projectStatsModal');
+      openModal('projectStats');
     } else {
       console.error('Failed to load project statistics:', response.status);
       showNotification('載入項目統計失敗', 'error');
@@ -4905,7 +4927,7 @@ function openMessageModal(expertId, expertName) {
   document.getElementById('messageRecipient').value = expertName;
   document.getElementById('messageContent').value = '';
   document.getElementById('messageModal').dataset.expertId = expertId;
-  openModal('messageModal');
+  openModal('message');
 }
 
 async function handleMessageSubmission(event) {
