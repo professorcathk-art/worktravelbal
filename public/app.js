@@ -278,16 +278,22 @@ const platformData = {
 
 // Task posting functionality
 function openPostTaskModal() {
+  console.log('openPostTaskModal called');
+  console.log('currentUser:', currentUser);
+  
   if (!currentUser) {
+    console.log('No current user, opening login modal');
     openModal('login');
     return;
   }
   
   if (currentUser.type !== 'client') {
+    console.log('User is not a client, type:', currentUser.type);
     showNotification('只有企業客戶可以發布任務', 'error');
     return;
   }
   
+  console.log('Opening post task modal');
   // Reset form for new task creation
   resetTaskForm();
   openModal('postTaskModal');
@@ -935,9 +941,13 @@ ${currentUser.name}
 
 async function editTask(taskId) {
   console.log('editTask called with taskId:', taskId);
+  showNotification('正在載入任務詳情...', 'info');
+  
   try {
     // Fetch the task details from the API
     const response = await fetch(`/api/tasks?id=${taskId}`);
+    console.log('API response status:', response.status);
+    
     if (response.ok) {
       const tasks = await response.json();
       console.log('Loaded task for editing:', tasks);
@@ -945,16 +955,19 @@ async function editTask(taskId) {
         const task = tasks[0];
         // Open the task creation modal in edit mode
         openTaskEditModal(task);
+        showNotification('任務詳情已載入', 'success');
       } else {
         showNotification('找不到任務詳情', 'error');
       }
     } else {
       console.error('Failed to load task details:', response.status);
-      showNotification('載入任務詳情失敗', 'error');
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      showNotification('載入任務詳情失敗: ' + response.status, 'error');
     }
   } catch (error) {
     console.error('Error loading task for editing:', error);
-    showNotification('載入任務詳情時發生錯誤', 'error');
+    showNotification('載入任務詳情時發生錯誤: ' + error.message, 'error');
   }
 }
 
@@ -2408,8 +2421,12 @@ function openMessageThread(threadId) {
 
 // Send message in thread
 function sendThreadMessage() {
+  console.log('sendThreadMessage called');
   const threadId = document.getElementById('messageThreadModal').dataset.threadId;
   const content = document.getElementById('newMessageContent').value.trim();
+  
+  console.log('Thread ID:', threadId);
+  console.log('Message content:', content);
   
   if (!content) {
     showNotification('請輸入訊息內容', 'error');
@@ -2422,6 +2439,8 @@ function sendThreadMessage() {
     return;
   }
   
+  console.log('Current user:', currentUser);
+  
   const messageThreads = JSON.parse(localStorage.getItem('messageThreads') || '[]');
   const thread = messageThreads.find(t => t.id === threadId);
   
@@ -2433,6 +2452,12 @@ function sendThreadMessage() {
   // Determine receiver
   const receiverId = thread.expertId === currentUser.id ? thread.corporateId : thread.expertId;
   const receiverName = thread.expertId === currentUser.id ? thread.corporateName : thread.expertName;
+  
+  console.log('Thread expert ID:', thread.expertId);
+  console.log('Thread corporate ID:', thread.corporateId);
+  console.log('Current user ID:', currentUser.id);
+  console.log('Receiver ID:', receiverId);
+  console.log('Receiver name:', receiverName);
   
   // Create new message
   const newMessage = {
@@ -2621,6 +2646,8 @@ function populateExperts(experts = platformData.experts) {
     // Always show experts as available
     const availabilityStatus = 'available';
     
+    const languages = expert.languages || [];
+    
     const card = document.createElement('div');
     card.className = 'expert-card';
     card.innerHTML = `
@@ -2630,19 +2657,27 @@ function populateExperts(experts = platformData.experts) {
           <div class="expert-name">${name}</div>
           <div class="expert-title">${title}</div>
         </div>
+        ${rating > 0 ? `
         <div class="expert-rating">
           <span class="rating-stars">⭐</span>
           <span>${rating} (${reviews})</span>
         </div>
+        ` : ''}
       </div>
       <div class="expert-location">📍 ${location}</div>
-      <div class="expert-details">
-        <div class="expert-detail"><strong>回應時間:</strong> ${responseTime}</div>
-        <div class="expert-detail"><strong>完成項目:</strong> ${completedProjects}</div>
-      </div>
       <div class="expert-skills">
-        ${skills.slice(0, 3).map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
-        ${skills.length > 3 ? '<span class="skill-tag">+更多</span>' : ''}
+        <div class="skills-section">
+          <strong>技能:</strong>
+          ${skills.slice(0, 3).map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+          ${skills.length > 3 ? '<span class="skill-tag">+更多</span>' : ''}
+        </div>
+        ${languages.length > 0 ? `
+        <div class="languages-section">
+          <strong>語言:</strong>
+          ${languages.slice(0, 3).map(lang => `<span class="skill-tag">${lang}</span>`).join('')}
+          ${languages.length > 3 ? '<span class="skill-tag">+更多</span>' : ''}
+        </div>
+        ` : ''}
       </div>
       <div class="expert-footer">
         <div class="expert-rate">${hourlyRate}/時</div>
@@ -3594,6 +3629,21 @@ window.showForgotPasswordModal = showForgotPasswordModal;
 window.showEmailCodeLoginModal = showEmailCodeLoginModal;
 window.sendEmailCode = sendEmailCode;
 window.toggleMobileMenu = toggleMobileMenu;
+window.previewAvatar = previewAvatar;
+
+// Avatar preview function
+function previewAvatar(input) {
+  const preview = document.getElementById('expertAvatarPreview');
+  if (!preview) return;
+  
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      preview.innerHTML = `<img src="${e.target.result}" alt="Avatar Preview">`;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
 
 // Mobile menu toggle
 function toggleMobileMenu() {
@@ -4460,6 +4510,12 @@ function openExpertProfileModal() {
       const portfolioInput = document.getElementById('expertPortfolio');
       if (portfolioInput) {
         portfolioInput.addEventListener('change', handlePortfolioFileUpload);
+      }
+      
+      // Setup avatar preview
+      const avatarPreview = document.getElementById('expertAvatarPreview');
+      if (avatarPreview && currentUser.avatar) {
+        avatarPreview.innerHTML = `<img src="${currentUser.avatar}" alt="Current Avatar">`;
       }
     }
     
