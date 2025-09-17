@@ -748,6 +748,7 @@ select.form-control {
   top: 0;
   z-index: 100;
   backdrop-filter: blur(10px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Mobile menu toggle - hidden on desktop */
@@ -770,7 +771,10 @@ select.form-control {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-12) 0;
+  padding: var(--space-16) 0;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .logo h2 {
@@ -788,7 +792,7 @@ select.form-control {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: var(--space-24);
+  gap: var(--space-32);
 }
 
 .nav-link {
@@ -796,15 +800,25 @@ select.form-control {
   font-weight: var(--font-weight-medium);
   text-decoration: none;
   transition: color var(--duration-fast) var(--ease-standard);
+  padding: var(--space-8) var(--space-16);
+  border-radius: var(--radius-sm);
+  position: relative;
 }
 
 .nav-link:hover {
   color: var(--color-primary);
+  background: var(--color-bg-1);
+}
+
+.nav-link.active {
+  color: var(--color-primary);
+  background: var(--color-bg-1);
 }
 
 .auth-buttons {
   display: flex;
-  gap: var(--space-8);
+  gap: var(--space-12);
+  align-items: center;
 }
 
 /* Main Content */
@@ -2226,22 +2240,6 @@ select.form-control {
     font-size: var(--font-size-sm);
   }
   
-  /* Navigation mobile fixes */
-  .nav-menu {
-    flex-direction: column;
-    gap: var(--space-8);
-  }
-  
-  .nav-menu li {
-    width: 100%;
-  }
-  
-  .nav-menu a {
-    display: block;
-    padding: var(--space-12) var(--space-16);
-    text-align: center;
-  }
-  
   /* Mobile navigation toggle */
   .mobile-menu-toggle {
     display: block;
@@ -2251,6 +2249,12 @@ select.form-control {
     color: var(--color-text);
     cursor: pointer;
     padding: var(--space-8);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--duration-fast) var(--ease-standard);
+  }
+  
+  .mobile-menu-toggle:hover {
+    background: var(--color-bg-1);
   }
   
   .nav-menu {
@@ -2264,10 +2268,31 @@ select.form-control {
     border-radius: var(--radius-base);
     box-shadow: var(--shadow-lg);
     z-index: 1000;
+    padding: var(--space-16);
+    margin-top: var(--space-8);
   }
   
   .nav-menu.active {
     display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+  
+  .nav-menu li {
+    width: 100%;
+  }
+  
+  .nav-menu a {
+    display: block;
+    padding: var(--space-12) var(--space-16);
+    text-align: center;
+    border-radius: var(--radius-sm);
+    transition: all var(--duration-fast) var(--ease-standard);
+  }
+  
+  .nav-menu a:hover {
+    background: var(--color-bg-1);
+    color: var(--color-primary);
   }
   
   /* Profile section mobile fixes */

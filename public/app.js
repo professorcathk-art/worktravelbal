@@ -1399,6 +1399,9 @@ function showSection(sectionName) {
     targetSection.classList.add('active');
   }
   
+  // Set active navigation link
+  setActiveNavLink(sectionName);
+  
   if (sectionName === 'portal') {
     if (!currentUser) {
       openModal('login');
@@ -3648,6 +3651,7 @@ window.showEmailCodeLoginModal = showEmailCodeLoginModal;
 window.sendEmailCode = sendEmailCode;
 window.toggleMobileMenu = toggleMobileMenu;
 window.previewAvatar = previewAvatar;
+window.setActiveNavLink = setActiveNavLink;
 
 // Avatar preview function
 function previewAvatar(input) {
@@ -3668,6 +3672,19 @@ function toggleMobileMenu() {
   const navMenu = document.querySelector('.nav-menu');
   if (navMenu) {
     navMenu.classList.toggle('active');
+  }
+}
+
+// Set active navigation link
+function setActiveNavLink(sectionName) {
+  // Remove active class from all nav links
+  const navLinks = document.querySelectorAll('.nav-link');
+  navLinks.forEach(link => link.classList.remove('active'));
+  
+  // Add active class to current section
+  const activeLink = document.querySelector(`[onclick*="${sectionName}"]`);
+  if (activeLink) {
+    activeLink.classList.add('active');
   }
 }
 
