@@ -3593,6 +3593,15 @@ window.removePortfolioFile = removePortfolioFile;
 window.showForgotPasswordModal = showForgotPasswordModal;
 window.showEmailCodeLoginModal = showEmailCodeLoginModal;
 window.sendEmailCode = sendEmailCode;
+window.toggleMobileMenu = toggleMobileMenu;
+
+// Mobile menu toggle
+function toggleMobileMenu() {
+  const navMenu = document.querySelector('.nav-menu');
+  if (navMenu) {
+    navMenu.classList.toggle('active');
+  }
+}
 
 // Portfolio file handling
 function handlePortfolioFileUpload(event) {

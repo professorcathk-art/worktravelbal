@@ -750,6 +750,11 @@ select.form-control {
   backdrop-filter: blur(10px);
 }
 
+/* Mobile menu toggle - hidden on desktop */
+.mobile-menu-toggle {
+  display: none;
+}
+
 .nav-content {
   display: flex;
   align-items: center;
@@ -2096,6 +2101,231 @@ select.form-control {
   .categories-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  
+  /* Portal mobile fixes */
+  .portal-grid {
+    gap: var(--space-16);
+  }
+  
+  .portal-sidebar {
+    order: 2;
+  }
+  
+  .portal-main {
+    order: 1;
+  }
+  
+  .portal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-12);
+  }
+  
+  .user-info {
+    align-self: flex-end;
+  }
+  
+  /* Modal mobile fixes */
+  .modal-content {
+    width: 95%;
+    max-width: none;
+    margin: var(--space-16);
+    max-height: 95vh;
+  }
+  
+  .modal-large {
+    width: 95%;
+    max-width: none;
+  }
+  
+  .modal-header {
+    padding: var(--space-16);
+  }
+  
+  .modal-body {
+    padding: var(--space-16);
+  }
+  
+  .modal-close {
+    font-size: 24px;
+    padding: var(--space-8);
+  }
+  
+  /* Form mobile fixes */
+  .form-group {
+    margin-bottom: var(--space-16);
+  }
+  
+  .form-control {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+  
+  /* Button mobile fixes */
+  .btn {
+    padding: var(--space-12) var(--space-16);
+    font-size: var(--font-size-base);
+  }
+  
+  .btn--sm {
+    padding: var(--space-8) var(--space-12);
+    font-size: var(--font-size-sm);
+  }
+  
+  /* Navigation mobile fixes */
+  .nav-menu {
+    flex-direction: column;
+    gap: var(--space-8);
+  }
+  
+  .nav-menu li {
+    width: 100%;
+  }
+  
+  .nav-menu a {
+    display: block;
+    padding: var(--space-12) var(--space-16);
+    text-align: center;
+  }
+  
+  /* Mobile navigation toggle */
+  .mobile-menu-toggle {
+    display: block;
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: var(--color-text);
+    cursor: pointer;
+    padding: var(--space-8);
+  }
+  
+  .nav-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    box-shadow: var(--shadow-lg);
+    z-index: 1000;
+  }
+  
+  .nav-menu.active {
+    display: flex;
+  }
+  
+  /* Profile section mobile fixes */
+  .profile-section {
+    margin-bottom: var(--space-16);
+    padding-bottom: var(--space-12);
+  }
+  
+  .profile-section h3,
+  .profile-section h4 {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--space-8);
+  }
+  
+  /* Skills and tags mobile fixes */
+  .expert-skills,
+  .expert-languages,
+  .skills-container {
+    gap: var(--space-6);
+  }
+  
+  .skill-tag {
+    font-size: var(--font-size-sm);
+    padding: var(--space-4) var(--space-8);
+  }
+  
+  /* Portfolio files mobile fixes */
+  .portfolio-file {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-8);
+  }
+  
+  .portfolio-file-info {
+    width: 100%;
+  }
+  
+  .portfolio-file-remove {
+    align-self: flex-end;
+  }
+  
+  /* Thread cards mobile fixes */
+  .thread-card {
+    padding: var(--space-12);
+  }
+  
+  .thread-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-8);
+  }
+  
+  .thread-actions {
+    flex-wrap: wrap;
+  }
+  
+  /* Language options mobile fixes */
+  .language-options {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  /* Phone input mobile fixes */
+  .phone-input-group {
+    flex-direction: column;
+  }
+  
+  .phone-country-code {
+    flex: none;
+    min-width: auto;
+  }
+  
+  /* Ensure content is visible and scrollable */
+  body {
+    overflow-x: hidden;
+  }
+  
+  .section {
+    padding: var(--space-16) 0;
+  }
+  
+  .container {
+    padding: 0 var(--space-16);
+  }
+  
+  /* Fix any overflow issues */
+  * {
+    box-sizing: border-box;
+  }
+  
+  /* Ensure modals are properly positioned */
+  .modal {
+    padding: var(--space-16);
+  }
+  
+  /* Fix text overflow */
+  .expert-card h3,
+  .task-card h3,
+  .success-story h4 {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  
+  /* Ensure buttons are touch-friendly */
+  .btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Fix form inputs for mobile */
+  input, textarea, select {
+    -webkit-appearance: none;
+    border-radius: var(--radius-sm);
+  }
 }
 
 @media (max-width: 480px) {
@@ -2109,6 +2339,60 @@ select.form-control {
   
   .categories-grid {
     grid-template-columns: 1fr;
+  }
+  
+  /* Extra small screen fixes */
+  .container {
+    padding: 0 var(--space-12);
+  }
+  
+  .modal-content {
+    width: 98%;
+    margin: var(--space-8);
+  }
+  
+  .modal-header {
+    padding: var(--space-12);
+  }
+  
+  .modal-body {
+    padding: var(--space-12);
+  }
+  
+  .portal-header h1 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .profile-section h3,
+  .profile-section h4 {
+    font-size: var(--font-size-base);
+  }
+  
+  .language-options {
+    grid-template-columns: 1fr;
+  }
+  
+  .btn {
+    padding: var(--space-10) var(--space-12);
+    font-size: var(--font-size-sm);
+  }
+  
+  .form-control {
+    padding: var(--space-10) var(--space-12);
+    font-size: 16px;
+  }
+  
+  .skill-tag {
+    font-size: var(--font-size-xs);
+    padding: var(--space-2) var(--space-6);
+  }
+  
+  .thread-card {
+    padding: var(--space-8);
+  }
+  
+  .portfolio-file {
+    padding: var(--space-8);
   }
 }
 

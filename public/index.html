@@ -15,9 +15,12 @@
                     <h2>🌍 數牧人</h2>
                 </div>
                 <div class="nav-links">
-                    <a href="#" onclick="showSection('home')" class="nav-link">首頁</a>
-                    <a href="#" onclick="showSection('experts')" class="nav-link">專家</a>
-                    <a href="#" onclick="showSection('tasks')" class="nav-link">任務</a>
+                    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
+                    <ul class="nav-menu">
+                        <li><a href="#" onclick="showSection('home'); toggleMobileMenu()" class="nav-link">首頁</a></li>
+                        <li><a href="#" onclick="showSection('experts'); toggleMobileMenu()" class="nav-link">專家</a></li>
+                        <li><a href="#" onclick="showSection('tasks'); toggleMobileMenu()" class="nav-link">任務</a></li>
+                    </ul>
                     <div class="auth-buttons">
                         <button class="btn btn--outline btn--sm" onclick="openModal('login')">登入</button>
                         <button class="btn btn--primary btn--sm" onclick="openModal('register')">加入平台</button>
